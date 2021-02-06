@@ -1,0 +1,8 @@
+{
+    "type" : "object",
+    "properties" : {
+        "dependencies_directory" : {"type" : "string"},
+        "cpp_standard" : {"type" : "string"},
+        "build_directory": {"type": "string"}
+    }
+}

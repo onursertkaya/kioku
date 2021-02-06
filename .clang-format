@@ -1,0 +1,20 @@
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterEnum: true
+  AfterClass: true
+  AfterFunction: true
+  AfterNamespace: true
+  AfterStruct: true
+  AfterControlStatement: Always
+  BeforeElse: true
+
+AccessModifierOffset: -3
+AlwaysBreakTemplateDeclarations: Yes
+PointerAlignment: Left
+BreakConstructorInitializers: AfterColon
+SpaceBeforeParens: ControlStatements
+SpacesBeforeTrailingComments: 2
+AlignTrailingComments: true
+IndentWidth: 4
+BreakBeforeBinaryOperators: None
+ColumnLimit: 100

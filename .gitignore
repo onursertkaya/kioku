@@ -1,0 +1,10 @@
+!.gitignore
+*.pkl
+*.gch
+build
+.vscode
+**/__pycache__
+
+# The configuration file to store build and dependency directories
+# as well as some compiler flags.
+.kioku
