@@ -3,6 +3,7 @@
 
 #include "algo/search.h"
 #include "dstruct/static_array.h"
+#include "dstruct/view.h"
 
 #include <cstdint>
 #include <iterator>
@@ -15,7 +16,6 @@ namespace algo
 {
 namespace sort
 {
-constexpr bool kDebugPrint{false};
 
 template <typename Container, typename T = typename Container::value_type>
 inline void selection(Container& array)
@@ -144,13 +144,6 @@ inline void merge(Container& array)
         auto const block_size{stride * 2U};
         auto const block_count{1U + (out.size() - 1U) / block_size};
 
-        if (kDebugPrint)
-        {
-            std::cout << out << std::endl;
-            std::cout << "s = " << stride << std::endl;
-            std::cout << "bs= " << block_size << std::endl;
-            std::cout << "bc= " << block_count << std::endl;
-        }
         for (uint32_t block_idx{0U}; block_idx < block_count; ++block_idx)
         {
             auto const curr_block_head = block_idx * block_size;
@@ -172,26 +165,15 @@ inline void merge(Container& array)
 
                 auto const left = left_exhausted ? maxval : array[left_head];
                 auto const right = right_exhausted ? maxval : array[right_head];
-                if (kDebugPrint)
-                {
-                    std::cout << "\t" << left << " <> " << right;
-                }
+
                 if (left <= right)
                 {
-                    if (kDebugPrint)
-                    {
-                        std::cout << "--->" << left << std::endl;
-                    }
                     out[out_ctr] = left;
                     ++out_ctr;
                     ++left_head;
                 }
                 else
                 {
-                    if (kDebugPrint)
-                    {
-                        std::cout << "--->" << right << std::endl;
-                    }
                     out[out_ctr] = right;
                     ++out_ctr;
                     ++right_head;
@@ -200,19 +182,14 @@ inline void merge(Container& array)
         }
         array = out;
         out_ctr = 0U;
-
-        if (kDebugPrint)
-        {
-            std::cout << out << std::endl;
-            std::cout << "============" << std::endl;
-        }
     }
 }
 
-// TODO(unknown): , implement the following:
+// TODO(unknown): implement the following:
 
+// recursive version
 // template <typename Container, typename T = typename Container::value_type>
-// inline void merge(Container& array)
+// inline void mergeV2(Container& array)
 // {
 
 // }

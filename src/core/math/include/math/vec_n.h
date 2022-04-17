@@ -36,7 +36,8 @@ class vecN
 
     // Variadically initialize from arbitrary elements.
     template <typename... Ts, uint32_t num_elems = sizeof...(Ts)>
-    explicit vecN(Ts&&... elems) : data_{std::forward<Ts>(elems)...}
+    explicit vecN(Ts&&... elems) :
+        data_{std::forward<Ts>(elems)...}
     {
         static_assert(num_elems == N);
         // https://stackoverflow.com/questions/37139379/stdinitializer-list-vs-variadic-templates

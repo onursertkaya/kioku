@@ -30,15 +30,6 @@ class matN
         }
     }
 
-    template <typename... Ts, uint32_t num_vecs = sizeof...(Ts)>
-    explicit matN(Ts (&&... vecs)[M]) : data_{std::forward<vecN<T, M>>(vecs)...}
-    {
-        // kioku-TIL
-        // cool stuff.
-        // https://stackoverflow.com/questions/65305326/c-sfinae-double-nested-initializer-list-vs-variadic-template-constructor?rq=1
-        static_assert(num_vecs == N);
-    }
-
     template <typename U = matN, std::enable_if_t<U::height == 1U, bool> = true>
     explicit matN(vecN<T, M> const& vec)
     {
@@ -46,6 +37,16 @@ class matN
         {
             data_[row][0U] = vec[row];
         }
+    }
+
+    template <typename... Ts, uint32_t num_vecs = sizeof...(Ts)>
+    explicit matN(Ts (&&... vecs)[M]) :
+        data_{vecN<T, M>(vecs)...}
+    {
+        // kioku-TIL
+        // cool stuff.
+        // https://stackoverflow.com/questions/65305326/c-sfinae-double-nested-initializer-list-vs-variadic-template-constructor?rq=1
+        static_assert(num_vecs == N);
     }
 
     // Copy ctor.

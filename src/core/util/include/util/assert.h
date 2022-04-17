@@ -37,6 +37,7 @@ inline void _kiokuAssert(T expr, char const* filename, char const* function, std
     }
 }
 
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define KIOKU_ASSERT(expr) _kiokuAssert(expr, __FILE__, __func__, __LINE__, #expr)
 
 }  // namespace core

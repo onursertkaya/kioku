@@ -1,6 +1,7 @@
 #include "dstruct/buffer.h"
 
 #include "gtest/gtest.h"
+#include <array>
 
 using kioku::core::DynamicBuffer;
 using kioku::core::StaticBuffer;
@@ -9,6 +10,17 @@ TEST(DynamicBuffer, create)
 {
     auto b = DynamicBuffer<int>{10};
     ASSERT_EQ(b.size(), 10U);
+}
+
+TEST(DynamicBuffer, create_from_container)
+{
+    auto b = DynamicBuffer<int>{std::array<int, 4>{4, 3, 2, 1}};
+    ASSERT_EQ(b.size(), 4U);
+
+    b[0U] = 4;
+    b[1U] = 3;
+    b[2U] = 2;
+    b[3U] = 1;
 }
 
 TEST(DynamicBuffer_DeathTest, create_assert)
@@ -28,23 +40,6 @@ TEST(DynamicBuffer, indexed_access)
     ASSERT_EQ(b[1U], 20);
     ASSERT_EQ(b[2U], 30);
     ASSERT_EQ(b[3U], 40);
-}
-
-TEST(DynamicBuffer, iterator_access)
-{
-    auto b = DynamicBuffer<int>{4};
-
-    ASSERT_EQ(b.begin() + std::ptrdiff_t{4U}, b.end());
-}
-
-TEST(DynamicBuffer, reset)
-{
-    auto b = DynamicBuffer<int>{4};
-
-    b.reset();
-
-    ASSERT_EQ(b.begin(), nullptr);
-    ASSERT_EQ(b.begin(), b.end());
 }
 
 TEST(DynamicBuffer, reallocation)
@@ -81,37 +76,22 @@ TEST(StaticBuffer, create)
     ASSERT_EQ(b.size(), 10U);
 }
 
-TEST(Static, copy_ctor)
+TEST(StaticBuffer, variadic_create)
 {
-    auto buffer = StaticBuffer<int, 3U>{};
-    auto copy_assigned = StaticBuffer<int, 3U>{};
+    auto b = StaticBuffer<int, 10U>{5, 6, 7, 8, 1, 2, 3, 4};
+    ASSERT_EQ(b.size(), 10U);
 
-    buffer[0U] = 12;
-    buffer[1U] = 13;
-    buffer[2U] = 14;
+    ASSERT_EQ(b[0U], 5);
+    ASSERT_EQ(b[1U], 6);
+    ASSERT_EQ(b[2U], 7);
+    ASSERT_EQ(b[3U], 8);
+    ASSERT_EQ(b[4U], 1);
+    ASSERT_EQ(b[5U], 2);
+    ASSERT_EQ(b[6U], 3);
+    ASSERT_EQ(b[7U], 4);
 
-    auto copy_constructed = buffer;
-    copy_assigned = buffer;
-
-    ASSERT_EQ(buffer.size(), 3U);
-    ASSERT_EQ(copy_constructed.size(), 3U);
-    ASSERT_EQ(copy_assigned.size(), 3U);
-
-    ASSERT_EQ(buffer[0U], 12);
-    ASSERT_EQ(copy_constructed[0U], 12);
-    ASSERT_EQ(copy_assigned[0U], 12);
-
-    ASSERT_EQ(buffer[1U], 13);
-    ASSERT_EQ(copy_constructed[1U], 13);
-    ASSERT_EQ(copy_assigned[1U], 13);
-
-    ASSERT_EQ(buffer[2U], 14);
-    ASSERT_EQ(copy_constructed[2U], 14);
-    ASSERT_EQ(copy_assigned[2U], 14);
-
-    ASSERT_NE(&buffer[0U], &copy_constructed[0U]);
-    ASSERT_NE(&buffer[0U], &copy_assigned[0U]);
-    ASSERT_NE(&copy_constructed[0U], &copy_assigned[0U]);
+    ASSERT_EQ(b[8U], int{});
+    ASSERT_EQ(b[9U], int{});
 }
 
 TEST(StaticBuffer, indexed_access)

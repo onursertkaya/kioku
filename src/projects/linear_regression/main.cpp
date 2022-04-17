@@ -18,7 +18,12 @@ class FFNLayer
 {
  public:
     explicit FFNLayer(T learning_rate) :
-        in_(0.0F), in_grad_(0.0F), W_(1.0F), b_(0.0F), out_(0.0F), learning_rate_{learning_rate}
+        in_(0.0F),
+        in_grad_(0.0F),
+        W_(1.0F),
+        b_(0.0F),
+        out_(0.0F),
+        learning_rate_{learning_rate}
     {
     }
 
@@ -90,7 +95,10 @@ template <typename T, uint32_t In, uint32_t Out, uint32_t NumLayers = 1U>
 class FeedForwardNetwork
 {
  public:
-    explicit FeedForwardNetwork(T learning_rate) : layers_{FFNLayer<T, In, Out>{learning_rate}} {}
+    explicit FeedForwardNetwork(T learning_rate) :
+        layers_{FFNLayer<T, In, Out>{learning_rate}}
+    {
+    }
 
     // void step(Datapoint const& datapoint)
     void step(core::matN<T, 1U, In> in_point, core::matN<T, 1U, Out> truth_point, bool print)

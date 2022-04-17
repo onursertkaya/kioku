@@ -23,7 +23,8 @@ class List
 {
  public:
     List(std::initializer_list<T> const elems) :
-        head_{std::make_shared<Node<T>>(*elems.begin(), nullptr)}, size_{1U}
+        head_{std::make_shared<Node<T>>(*elems.begin(), nullptr)},
+        size_{1U}
     {
         auto first_after_head = std::next(elems.begin());
         for (auto e_it = first_after_head; e_it != elems.end(); ++e_it)
@@ -96,7 +97,11 @@ class List
     template <typename U = T>
     struct Node
     {
-        Node(T e, std::shared_ptr<Node<U>> n) : elem{e}, next{std::move(n)} {}
+        Node(T e, std::shared_ptr<Node<U>> n) :
+            elem{e},
+            next{std::move(n)}
+        {
+        }
         U elem;
         std::shared_ptr<Node<U>> next;
     };

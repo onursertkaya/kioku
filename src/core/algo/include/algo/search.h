@@ -25,12 +25,12 @@ struct QueryResult
 };
 
 template <typename Container, typename T = typename Container::value_type>
-inline QueryResult<T> linear(Container const& c, T const& value)
+inline QueryResult<T> linear(Container const& array, T const& value)
 {
     std::size_t idx{0U};
-    for (auto const& e : c)
+    for (auto const& elem : array)
     {
-        if (e == value)
+        if (elem == value)
         {
             break;
         }
@@ -40,7 +40,7 @@ inline QueryResult<T> linear(Container const& c, T const& value)
 }
 
 template <typename Container, typename T = typename Container::value_type>
-inline QueryResult<T> binary(Container const& c, T const& value)
+inline QueryResult<T> binary(Container const& array, T const& value)
 {
     // source:
     // Errichto | Binary Search Tutorial (C++ and Python) | watch?v=GU7DpgHINWQ
@@ -49,18 +49,18 @@ inline QueryResult<T> binary(Container const& c, T const& value)
     // precondition: container c must be sorted.
     std::size_t idx{0U};
 
-    std::size_t l{0U};
-    std::size_t r{c.size() - 1U};
-    while (l <= r)
+    std::size_t left{0U};
+    std::size_t right{array.size() - 1U};
+    while (left <= right)
     {
-        auto mid = l + ((r - l) / 2U);
-        if (c[mid] < value)
+        auto mid = left + ((right - left) / 2U);
+        if (array[mid] < value)
         {
-            l = mid + 1U;
+            left = mid + 1U;
         }
-        else if (c[mid] > value)
+        else if (array[mid] > value)
         {
-            r = mid - 1U;
+            right = mid - 1U;
         }
         else
         {
@@ -73,16 +73,16 @@ inline QueryResult<T> binary(Container const& c, T const& value)
 }
 
 template <typename Container, typename T = typename Container::value_type>
-inline QueryResult<T> min(Container const& c)
+inline QueryResult<T> min(Container const& array)
 {
     std::size_t idx{0U};
     std::size_t min_val_idx{0U};
     T min_val{std::numeric_limits<T>::max()};
-    for (auto const& e : c)
+    for (auto const& elem : array)
     {
-        if (e < min_val)
+        if (elem < min_val)
         {
-            min_val = e;
+            min_val = elem;
             min_val_idx = idx;
         }
         idx++;
@@ -91,16 +91,16 @@ inline QueryResult<T> min(Container const& c)
 }
 
 template <typename Container, typename T = typename Container::value_type>
-inline QueryResult<T> max(Container const& c)
+inline QueryResult<T> max(Container const& array)
 {
     std::size_t idx{0U};
     std::size_t max_val_idx{0U};
     T max_val{std::numeric_limits<T>::min()};
-    for (auto const& e : c)
+    for (auto const& elem : array)
     {
-        if (e > max_val)
+        if (elem > max_val)
         {
-            max_val = e;
+            max_val = elem;
             max_val_idx = idx;
         }
         idx++;

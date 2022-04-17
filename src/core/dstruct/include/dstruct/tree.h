@@ -57,7 +57,10 @@ class BinaryTree
     using TreeNode = Node<T, NodeType::kBinaryTree>;
     using value_type = T;
 
-    explicit BinaryTree(T const root_key) : root_{new TreeNode{root_key}} {}
+    explicit BinaryTree(T const root_key) :
+        root_{new TreeNode{root_key}}
+    {
+    }
 
     void setLeft(TreeNode* left) { root_->left_ = left; }
 
@@ -167,7 +170,10 @@ class BinarySearchTree : public BinaryTree<T>
  public:
     using TreeNode = typename BinaryTree<T>::TreeNode;
 
-    explicit BinarySearchTree(T const root_key) : BinaryTree<T>{root_key} {}
+    explicit BinarySearchTree(T const root_key) :
+        BinaryTree<T>{root_key}
+    {
+    }
 
     T search(T const key)
     {

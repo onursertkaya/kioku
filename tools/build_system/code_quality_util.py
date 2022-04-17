@@ -71,7 +71,7 @@ def clang_tidy():
     cmd_base = [
         CLANG_TIDY_LATEST,
         "-header-filter=.*",
-        "--fix",
+        # "--fix",
     ]
 
     sys_includes = [

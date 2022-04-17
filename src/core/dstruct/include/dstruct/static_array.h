@@ -23,7 +23,7 @@ namespace core
 /// All memory is allocated at initialization.
 /// There'll be no memory management during object lifetime.
 template <typename T, std::size_t N, int FillVal = 0>
-class StaticArray
+class StaticArrayDeprecated
 {
  public:
     using value_type = T;
@@ -32,7 +32,8 @@ class StaticArray
     static constexpr T default_value{static_cast<T>(FillVal)};
 
     // Copy ctor (1/5)
-    StaticArray(StaticArray const& other, T const fill_val = T{}) : ctr_{other.ctr_}
+    StaticArrayDeprecated(StaticArrayDeprecated const& other, T const fill_val = T{}) :
+        ctr_{other.ctr_}
     {
         std::copy(other.begin(), other.end(), this->begin());
 
@@ -44,7 +45,7 @@ class StaticArray
     }
 
     // Copy assignment (2/5)
-    StaticArray& operator=(StaticArray const& other)
+    StaticArrayDeprecated& operator=(StaticArrayDeprecated const& other)
     {
         ctr_ = other.ctr_;
         std::copy(other.begin(), other.end(), this->begin());
@@ -56,15 +57,17 @@ class StaticArray
     // clash of "is this the size parameter, or an element?" which e.g. std::vector has.
     template <typename... Ts, index_type NumTs = sizeof...(Ts),
               std::enable_if_t<(std::is_same_v<Ts, T> && ...) && (NumTs > 1U), bool> = true>
-    explicit StaticArray(Ts&&... elems) : data_{elems...}, ctr_{NumTs}
+    explicit StaticArrayDeprecated(Ts&&... elems) :
+        data_{elems...},
+        ctr_{NumTs}
     {
     }
 
     // Ctor with fill value, a.k.a. initialization value.
     // Instance will still be empty.
-    static StaticArray createFill(T const fill_val = T{})
+    static StaticArrayDeprecated createFill(T const fill_val = T{})
     {
-        StaticArray retval{};
+        StaticArrayDeprecated retval{};
         std::fill(std::begin(retval.data_), std::end(retval.data_), fill_val);
         return retval;
     }
@@ -72,10 +75,11 @@ class StaticArray
     // Ctor for constucting from other instance with different buffer capacity,
     // optionally using a custom fill value.
     template <typename U = T, index_type M>
-    static StaticArray createFrom(StaticArray<U, M> const& other, U const fill_val = U{})
+    static StaticArrayDeprecated createFrom(StaticArrayDeprecated<U, M> const& other,
+                                            U const fill_val = U{})
     {
         static_assert(M < N);  // for M==N, use copy ctor instead.
-        StaticArray retval{};
+        StaticArrayDeprecated retval{};
         retval.ctr_ = other.size();
         std::copy(other.begin(), other.end(), retval.begin());
         if (fill_val != U{})
@@ -90,7 +94,8 @@ class StaticArray
     // Can be an STL vector, array, list etc.
     template <typename Container,
               std::enable_if_t<std::is_same_v<typename Container::value_type, T>, bool> = true>
-    explicit StaticArray(Container array, T fill_val = T{}) : ctr_{array.size()}
+    explicit StaticArrayDeprecated(Container array, T fill_val = T{}) :
+        ctr_{array.size()}
     {
         KIOKU_ASSERT(array.size() > 0);
         KIOKU_ASSERT(array.size() <= N);
@@ -107,7 +112,7 @@ class StaticArray
 
     T const& operator[](index_type const idx) const noexcept
     {
-        return const_cast<StaticArray*>(this)->at(idx);
+        return const_cast<StaticArrayDeprecated*>(this)->at(idx);
     }
 
     T& at(index_type idx) noexcept
@@ -116,7 +121,7 @@ class StaticArray
         // reading? i.e. const version of operator[].
         if (idx >= N)
         {
-            std::cout << "[StaticArray] operator[](): Out of bounds "
+            std::cout << "[StaticArrayDeprecated] operator[](): Out of bounds "
                       << "access at idx: " << idx << std::endl;
             idx = N - 1U;
         }
@@ -132,7 +137,7 @@ class StaticArray
         }
         else
         {
-            std::cout << "[StaticArray] push_back(): Capacity full, "
+            std::cout << "[StaticArrayDeprecated] push_back(): Capacity full, "
                       << "not inserting element: " << elem << std::endl;
         }
     }
@@ -146,7 +151,7 @@ class StaticArray
         }
         else
         {
-            std::cout << "[StaticArray] pop_back(): Array empty." << std::endl;
+            std::cout << "[StaticArrayDeprecated] pop_back(): Array empty." << std::endl;
         }
     }
 
@@ -164,13 +169,13 @@ class StaticArray
     T data_[N]{};
     index_type ctr_{};
 
-    StaticArray() = default;
+    StaticArrayDeprecated() = default;
 
     void fill_rest(T const val) { std::fill(this->end(), std::end(data_), val); }
 };
 
 template <typename T, std::size_t N>
-std::ostream& operator<<(std::ostream& stream, StaticArray<T, N> const& arr)
+std::ostream& operator<<(std::ostream& stream, StaticArrayDeprecated<T, N> const& arr)
 {
     for (auto const& e : arr)
     {

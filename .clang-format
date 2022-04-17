@@ -18,3 +18,4 @@ AlignTrailingComments: true
 IndentWidth: 4
 BreakBeforeBinaryOperators: None
 ColumnLimit: 100
+PackConstructorInitializers: Never

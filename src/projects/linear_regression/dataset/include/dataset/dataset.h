@@ -25,7 +25,8 @@ template <typename T, uint32_t NumSamples, uint32_t In, uint32_t Out>
 class Dataset
 {
  public:
-    explicit Dataset(std::string const& path) : path_{path}
+    explicit Dataset(std::string const& path) :
+        path_{path}
     {
         std::fstream file_stream{path};
         std::string line;
@@ -59,7 +60,7 @@ class Dataset
  private:
     std::string path_;
     uint32_t current_data_point_{0U};
-    core::StaticArray<DataPoint<T, In, Out>, NumSamples> data_points_{};
+    core::StaticArrayDeprecated<DataPoint<T, In, Out>, NumSamples> data_points_{};
 };
 
 }  // namespace ml

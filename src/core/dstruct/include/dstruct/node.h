@@ -20,7 +20,10 @@ struct Node;
 template <typename T>
 struct Node<T, NodeType::kSingleLinkedList>
 {
-    explicit Node(T const e) : elem_{e} {}
+    explicit Node(T const elem) :
+        elem_{elem}
+    {
+    }
     T elem_{};
     Node* next_{nullptr};
 };
@@ -28,7 +31,10 @@ struct Node<T, NodeType::kSingleLinkedList>
 template <typename T>
 struct Node<T, NodeType::kDoubleLinkedList>
 {
-    explicit Node(T const e) : elem_{e} {}
+    explicit Node(T const elem) :
+        elem_{elem}
+    {
+    }
     T elem_{};
     Node* next_{nullptr};
     Node* prev_{nullptr};
@@ -37,7 +43,10 @@ struct Node<T, NodeType::kDoubleLinkedList>
 template <typename T>
 struct Node<T, NodeType::kBinaryTree>
 {
-    explicit Node(T const e) : elem_{e} {}
+    explicit Node(T const elem) :
+        elem_{elem}
+    {
+    }
     T elem_{};
     Node* parent_{nullptr};
     Node* left_{nullptr};
