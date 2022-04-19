@@ -61,6 +61,7 @@ class Dependencies:
         self._path = path
         self._path.mkdir(exist_ok=True)
 
+        # TODO: add rapidcheck
         self._deps = [
             Dependency(
                 "googletest",
@@ -73,7 +74,16 @@ class Dependencies:
                 ["libgtest.a", "libgtest_main.a"],
                 ["-pthread"],
             ),
-            # TODO: add rapidcheck
+            Dependency(
+                "libpng",
+                "https://github.com/glennrp/libpng",
+                "libpng16",
+                ".",
+                "png.h",
+                "lib",
+                ["libpng.a"],
+                ["libpngd.a"],
+            ),
         ]
 
         self.misc_deps = [
@@ -120,6 +130,13 @@ class Dependencies:
                 fancy_separator()
                 fancy_run(["cmake", "-DCMAKE_BUILD_TYPE=Debug", ".."])
                 fancy_run(["make", "-j2"])
+            elif dep_dir.name == "libpng":
+                (Path.cwd() / self.DEFAULT_BUILD_DIR).mkdir(exist_ok=True)
+
+                fancy_separator()
+                fancy_run(["./configure", f"--prefix={str(Path.cwd() / self.DEFAULT_BUILD_DIR)}"])
+                fancy_run(["make", "check"])
+                fancy_run(["make", "install"])
 
         os.chdir(current_dir)
 
