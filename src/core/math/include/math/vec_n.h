@@ -228,16 +228,11 @@ class vecN
         return data_[idx];
     }
 
-    // clang-format off
-    template <
-        typename Vec,
-        std::enable_if_t<
-            (std::is_same_v<Vec, vecN<typename Vec::value_type, Vec::height>>) &&
-            (std::is_convertible_v<T, typename Vec::value_type>) &&
-            (height == Vec::height),
-            bool> = true
-    >
-    // clang-format on
+    template <typename Vec,
+              std::enable_if_t<
+                  (std::is_same_v<Vec, vecN<typename Vec::value_type, Vec::height>>)&&(
+                      std::is_convertible_v<T, typename Vec::value_type>)&&(height == Vec::height),
+                  bool> = true>
     T dot(Vec const& other) const
     {
         // a.k.a. scalar product. sum(elemwise)

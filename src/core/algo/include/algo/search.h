@@ -3,6 +3,8 @@
 #include <cstdint>
 #include <limits>
 
+#include "dstruct/view.h"
+
 namespace kioku
 {
 namespace algo
@@ -27,8 +29,9 @@ struct QueryResult
 template <typename Container, typename T = typename Container::value_type>
 inline QueryResult<T> linear(Container const& array, T const& value)
 {
+    auto c_view = createConstView(array);
     std::size_t idx{0U};
-    for (auto const& elem : array)
+    for (auto const& elem : c_view)
     {
         if (elem == value)
         {
@@ -47,18 +50,20 @@ inline QueryResult<T> binary(Container const& array, T const& value)
 
     // complexity: log2(N) as search space is halved in each iteration.
     // precondition: container c must be sorted.
+
+    auto c_view = createConstView(array);
     std::size_t idx{0U};
 
     std::size_t left{0U};
-    std::size_t right{array.size() - 1U};
+    std::size_t right{c_view.size() - 1U};
     while (left <= right)
     {
         auto mid = left + ((right - left) / 2U);
-        if (array[mid] < value)
+        if (c_view.at(mid) < value)
         {
             left = mid + 1U;
         }
-        else if (array[mid] > value)
+        else if (c_view.at(mid) > value)
         {
             right = mid - 1U;
         }
@@ -75,10 +80,12 @@ inline QueryResult<T> binary(Container const& array, T const& value)
 template <typename Container, typename T = typename Container::value_type>
 inline QueryResult<T> min(Container const& array)
 {
+    auto c_view = createConstView(array);
+
     std::size_t idx{0U};
     std::size_t min_val_idx{0U};
     T min_val{std::numeric_limits<T>::max()};
-    for (auto const& elem : array)
+    for (auto const& elem : c_view)
     {
         if (elem < min_val)
         {
@@ -93,10 +100,12 @@ inline QueryResult<T> min(Container const& array)
 template <typename Container, typename T = typename Container::value_type>
 inline QueryResult<T> max(Container const& array)
 {
+    auto c_view = createConstView(array);
+
     std::size_t idx{0U};
     std::size_t max_val_idx{0U};
     T max_val{std::numeric_limits<T>::min()};
-    for (auto const& elem : array)
+    for (auto const& elem : c_view)
     {
         if (elem > max_val)
         {

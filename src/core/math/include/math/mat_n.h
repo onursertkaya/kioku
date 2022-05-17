@@ -154,12 +154,10 @@ class matN
         return retval;
     }
 
-    // clang-format off
     template <typename Mat,
-              std::enable_if_t<(std::is_same_v<Mat, matN<T, Mat::height, Mat::width>>) &&
-                               (Mat::height == width),
-              bool> = true>
-    // clang-format on
+              std::enable_if_t<
+                  (std::is_same_v<Mat, matN<T, Mat::height, Mat::width>>)&&(Mat::height == width),
+                  bool> = true>
     [[nodiscard]] auto dot(Mat const& other) const
     {
         // static_assert();
@@ -177,12 +175,9 @@ class matN
         return retval;
     }
 
-    // clang-format off
     template <typename Vec,
-              std::enable_if_t<(std::is_same_v<Vec, vecN<T, Vec::height>>) &&
-                               (Vec::height == width),
-              bool> = true>
-    // clang-format on
+              std::enable_if_t<(std::is_same_v<Vec, vecN<T, Vec::height>>)&&(Vec::height == width),
+                               bool> = true>
     auto dot(Vec const& vec) const
     {
         matN<T, height, 1U> retval(static_cast<T>(0.0F));
@@ -195,12 +190,9 @@ class matN
     }
 
     // so this works
-    // clang-format off
     template <typename U = matN,
-              std::enable_if_t<(U::height == U::width) &&
-                               (U::height == 2U),
-              bool> = true>
-    // clang-format on
+              std::enable_if_t<(U::height == U::width) && (U::height == 2U), bool> = true>
+
     // //but this does not
     // template <
     //     std::enable_if_t<

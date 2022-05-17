@@ -14,31 +14,31 @@ template <typename T>
 class View
 {
  public:
-    using value_type = T;
+    using value_type = std::remove_cv_t<T>;
+    using const_value_type = value_type const;
 
     template <typename Container, typename U = typename Container::value_type>
     explicit View(Container& array) :
         data_{array.data()},
         size_{array.size()}
     {
-        static_assert(std::is_same_v<U, T>, "Incompatible underlying type.");
+        static_assert(std::is_same_v<U, value_type>, "Incompatible underlying type.");
     }
 
     // create a new view, pointing to the same array, with narrower range.
-    View range(std::size_t const start, std::size_t const end)
+    View range(std::size_t const start, std::size_t const end) const
     {
         KIOKU_ASSERT(end > start);
         KIOKU_ASSERT(end < size_);
         return View(data_, start, end);
     }
 
-    std::size_t size() const { return size_; }
+    [[nodiscard]] std::size_t size() const { return size_; }
 
-    T at(std::size_t const idx) const { return data_[idx]; }
-    T& at(std::size_t const idx) { return data_[idx]; }
+    T& at(std::size_t const idx) const { return data_[idx]; }
 
-    T* begin() { return data_; }
-    T* end() { return data_ + static_cast<ptrdiff_t>(size_); }
+    T* begin() const { return data_; }
+    T* end() const { return data_ + static_cast<ptrdiff_t>(size_); }
 
  private:
     T* data_;
@@ -56,16 +56,17 @@ template <typename T>
 class DynamicView
 {
  public:
-    using value_type = T;
+    using value_type = std::remove_cv_t<T>;
+    using const_value_type = value_type const;
+    static_assert(!std::is_const_v<T>, "Const type is not allowed in DynamicView.");
 
     template <typename Container, typename U = typename Container::value_type>
     explicit DynamicView(Container& array) :
-        view_{View<T>{array}},
-        ctr_{0U}
+        view_{View<value_type>{array}}
     {
     }
 
-    void push_back(T const& elem) noexcept
+    void push_back(T const& elem) const noexcept
     {
         if (ctr_ < view_.size())
         {
@@ -75,12 +76,12 @@ class DynamicView
         else
         {
             std::cout << "[DynamicView] "
-                      << "push_back(): Capacity full, "
+                      << "push_back(): Capacity full at idx: " << ctr_ << ", "
                       << "not inserting element: " << elem << std::endl;
         }
     }
 
-    void pop_back() noexcept
+    void pop_back() const noexcept
     {
         if (ctr_ > 0U)
         {
@@ -94,23 +95,28 @@ class DynamicView
         }
     }
 
-    std::size_t size() const { return ctr_; }
+    [[nodiscard]] std::size_t size() const { return ctr_; }
 
-    T at(std::size_t const idx) const { return view_.at(idx); }
-    T& at(std::size_t const idx) { return view_.at(idx); }
+    T& at(std::size_t const idx) const { return view_.at(idx); }
 
-    T* begin() { return view_.begin(); }
-    T* end() { return view_.end(); }
+    T* begin() const { return view_.begin(); }
+    T* end() const { return view_.end(); }
 
  private:
-    View<T> view_;
-    std::size_t ctr_;
+    View<value_type> view_;
+    std::size_t mutable ctr_{0U};
 };
 
 template <typename Container>
 decltype(auto) createView(Container& array)
 {
     return View<typename Container::value_type>(array);
+}
+
+template <typename Container>
+decltype(auto) createConstView(Container const& array)
+{
+    return View<typename Container::value_type const>(array);
 }
 
 template <typename Container>

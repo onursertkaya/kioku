@@ -1,13 +1,13 @@
 #include "algo/search.h"
 
-#include "dstruct/static_array.h"
+#include "dstruct/buffer.h"
 #include "gtest/gtest.h"
 
-using kioku::core::StaticArrayDeprecated;
+using kioku::core::StaticBuffer;
 
 TEST(TestSearch, linear)
 {
-    StaticArrayDeprecated<int, 5U> arr{-1, 0, 1, 2, 3};
+    StaticBuffer<int, 5U> arr{-1, 0, 1, 2, 3};
 
     constexpr int item_to_find{2};
     auto res = kioku::algo::search::linear(arr, item_to_find);
@@ -17,11 +17,10 @@ TEST(TestSearch, linear)
 
 TEST(TestSearch, binary)
 {
-    StaticArrayDeprecated<int, 17U> arr{0,  2,  5,  15, 26, 29,  31,  37,  41,
-                                        45, 46, 47, 48, 71, 123, 522, 1502};
+    StaticBuffer<int, 17U> arr{0, 2, 5, 15, 26, 29, 31, 37, 41, 45, 46, 47, 48, 71, 123, 522, 1502};
 
-    StaticArrayDeprecated<int, 6U> items{2, 26, 37, 47, 71, 522};
-    StaticArrayDeprecated<std::size_t, 6U> idxs{1UL, 4UL, 7UL, 11UL, 13UL, 15UL};
+    StaticBuffer<int, 6U> items{2, 26, 37, 47, 71, 522};
+    StaticBuffer<std::size_t, 6U> idxs{1UL, 4UL, 7UL, 11UL, 13UL, 15UL};
 
     for (std::size_t i{0U}; i < items.size(); ++i)
     {
@@ -33,7 +32,7 @@ TEST(TestSearch, binary)
 
 TEST(TestSearch, find_max)
 {
-    StaticArrayDeprecated<int, 5U> arr{-1, 0, 1, 2, 3};
+    StaticBuffer<int, 5U> arr{-1, 0, 1, 2, 3};
 
     auto res = kioku::algo::search::max(arr);
     ASSERT_EQ(res.idx, 4U);
@@ -42,7 +41,7 @@ TEST(TestSearch, find_max)
 
 TEST(TestSearch, find_min)
 {
-    StaticArrayDeprecated<int, 5U> arr{-1, 0, 1, 2, 3};
+    StaticBuffer<int, 5U> arr{-1, 0, 1, 2, 3};
 
     auto res = kioku::algo::search::min(arr);
     ASSERT_EQ(res.idx, 0U);

@@ -8,6 +8,12 @@ Checks: >
     -llvmlibc-callee-namespace,
     -modernize-use-trailing-return-type,
     -modernize-concat-nested-namespaces,
+    -cppcoreguidelines-pro-bounds-pointer-arithmetic,
+    -cppcoreguidelines-avoid-c-arrays,
+    -hicpp-avoid-c-arrays,
+    -modernize-avoid-c-arrays,
+    -google-readability-todo,
+    # -cppcoreguidelines-owning-memory, -- TODO: evaluate
 WarningsAsErrors: '*'
 HeaderFilterRegex: ''
 CheckOptions:

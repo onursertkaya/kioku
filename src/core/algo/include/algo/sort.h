@@ -185,7 +185,7 @@ inline void merge(Container& array)
     }
 }
 
-// TODO(unknown): implement the following:
+// TODO: implement the following:
 
 // recursive version
 // template <typename Container, typename T = typename Container::value_type>

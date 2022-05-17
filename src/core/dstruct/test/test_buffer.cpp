@@ -7,7 +7,7 @@ using kioku::core::DynamicBuffer;
 using kioku::core::StaticBuffer;
 
 // TODO: find a more elegant solution to write the same tests for const instances.
-// possibly via  TYPED_TEST.
+// possibly via TYPED_TEST.
 
 TEST(StaticBuffer, create)
 {

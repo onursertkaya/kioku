@@ -30,7 +30,7 @@ class Stack
         return data_[idx_];
     }
 
-    std::size_t size() { return idx_; }
+    [[nodiscard]] std::size_t size() { return idx_; }
 
     bool empty() { return size() == 0U; }
 

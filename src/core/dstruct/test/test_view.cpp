@@ -6,19 +6,66 @@
 #include "gtest/gtest.h"
 
 using kioku::core::DynamicBuffer;
+using kioku::core::DynamicView;
 using kioku::core::StaticBuffer;
 using kioku::core::View;
 
-TEST(View, create)
+TEST(View, traits)
 {
-    auto b = StaticBuffer<int, 10>{};
+    constexpr bool same{std::is_same_v<View<float>::value_type, float>};
+    ASSERT_TRUE(same);
 
-    auto b_view = createView(b);
+    constexpr bool same_const_to_non_const{std::is_same_v<View<float const>::value_type, float>};
+    ASSERT_TRUE(same_const_to_non_const);
 
-    ASSERT_EQ(b_view.size(), b.size());
+    constexpr bool same_non_const_to_const{
+        std::is_same_v<View<float>::const_value_type, float const>};
+    ASSERT_TRUE(same_non_const_to_const);
+
+    constexpr bool same_const_to_const{
+        std::is_same_v<View<float const>::const_value_type, float const>};
+    ASSERT_TRUE(same_const_to_const);
 }
 
-TEST(View, range)
+TEST(View, create_view)
+{
+    auto sb = StaticBuffer<int, 10>{};
+
+    auto sb_view = createView(sb);
+    auto const c_sb_view = createView(sb);
+
+    ASSERT_EQ(sb_view.size(), sb.size());
+    ASSERT_EQ(c_sb_view.size(), sb.size());
+
+    auto db = DynamicBuffer<int>{5};
+
+    auto db_view = createView(db);
+    auto const c_db_view = createView(db);
+
+    ASSERT_EQ(db_view.size(), db.size());
+    ASSERT_EQ(c_db_view.size(), db.size());
+}
+
+TEST(View, create_const_view)
+{
+    auto sb = StaticBuffer<int, 10>{};
+
+    auto sb_c_view = createConstView(sb);
+    auto const c_sb_c_view = createConstView(sb);
+
+    ASSERT_EQ(sb_c_view.size(), sb.size());
+    ASSERT_EQ(c_sb_c_view.size(), sb.size());
+
+    auto db = DynamicBuffer<int>{5};
+
+    auto db_c_view = createConstView(db);
+    auto const c_db_c_view = createConstView(db);
+
+    ASSERT_EQ(db_c_view.size(), db.size());
+    ASSERT_EQ(c_db_c_view.size(), db.size());
+}
+
+TEST(View, range_and_at)
 {
     auto b = StaticBuffer<int, 10>{};
     b[0U] = 1;
@@ -34,15 +81,49 @@ TEST(View, range)
 
     auto b_view = createView(b);
 
-    auto subview = b_view.range(3, 5);
+    auto subview = b_view.range(3, 6);
 
+    ASSERT_EQ(subview.size(), 3U);
     ASSERT_EQ(subview.at(0), -4);
     ASSERT_EQ(subview.at(1), 5);
-    ASSERT_EQ(subview.size(), 2U);
+    ASSERT_EQ(subview.at(2), -6);
 
-    auto sub_subview = subview.range(0, 1);
-    ASSERT_EQ(sub_subview.at(0), -4);
-    ASSERT_EQ(sub_subview.size(), 1U);
+    auto const c_sub_subview = subview.range(0, 2);
+    ASSERT_EQ(c_sub_subview.size(), 2U);
+    ASSERT_EQ(c_sub_subview.at(0), -4);
+    ASSERT_EQ(c_sub_subview.at(1), 5);
+
+    auto sub_sub_subview = c_sub_subview.range(0, 1);
+    ASSERT_EQ(sub_sub_subview.size(), 1U);
+    ASSERT_EQ(sub_sub_subview.at(0), -4);
+}
+
+TEST(View, at_access_const_correctness)
+{
+    auto sb = StaticBuffer<int, 3>{};
+    sb[0] = 1;
+    sb[1] = 2;
+    sb[3] = 3;
+
+    int* p_buffer = &sb[0];
+
+    auto sb_view = createView(sb);
+    int* p_view = &sb_view.at(0);
+
+    // for view, ensure no return-by-value-occurs by checking the
+    // equality of addresses.
+    ASSERT_EQ(p_view, p_buffer);
+
+    // for const view, ensure the same, but also ensure that the
+    // returned reference is const, to guarantee that assignment by the
+    // client is not allowed.
+    auto sb_c_view = createConstView(sb);
+    int const* p_c_view = &sb_c_view.at(0);
+    ASSERT_EQ(p_c_view, p_buffer);
+
+    using ConstViewAtReturnType = decltype(sb_c_view.at(0));
+    constexpr bool same{std::is_same_v<ConstViewAtReturnType, int const&>};
+    ASSERT_TRUE(same);
 }
 
 TEST(View_DeathTest, invalid_range)
@@ -51,6 +132,20 @@ TEST(View_DeathTest, invalid_range)
     auto b_view = createView(b);
 
     ASSERT_DEATH({ static_cast<void>(b_view.range(0, 0)); }, ".*");
+}
+
+TEST(DynamicView, traits)
+{
+    constexpr bool same{std::is_same_v<DynamicView<float>::value_type, float>};
+    ASSERT_TRUE(same);
+
+    constexpr bool same_non_const_to_const{
+        std::is_same_v<DynamicView<float>::const_value_type, float const>};
+    ASSERT_TRUE(same_non_const_to_const);
+
+    // float const as the type is prevented by static_assert in the class body.
+    // constexpr bool same_const_to_non_const{std::is_same_v<DynamicView<float const>::value_type,
+    // float>};
 }
 
 TEST(View, range_based_loop)
@@ -137,21 +232,23 @@ TEST(DynamicView, pop_back)
     ASSERT_TRUE(match);
 }
 
-TEST(DynamicView, at_access)
+TEST(View, at_access_const_correctness)
 {
-    auto b = StaticBuffer<int, 5>{};
-    auto a = createDynamicView(b);
+    auto sb = StaticBuffer<int, 3>{};
+    sb[0] = 1;
+    sb[1] = 2;
+    sb[3] = 3;
 
-    for (int i = 4; i < 9; ++i)
-    {
-        a.push_back(i);
-    }
+    int* p_buffer = &sb[0];
 
-    ASSERT_EQ(a.size(), 5U);
+    auto sb_view = createDynamicView(sb);
+    int* p_view = &sb_view.at(0);
 
-    ASSERT_EQ(a.at(0), 4);
-    ASSERT_EQ(a.at(1), 5);
-    ASSERT_EQ(a.at(2), 6);
-    ASSERT_EQ(a.at(3), 7);
-    ASSERT_EQ(a.at(4), 8);
+    // ensure no return-by-value-occurs by checking the
+    // equality of addresses.
+    ASSERT_EQ(p_view, p_buffer);
+
+    using DynamicViewAtReturnType = decltype(sb_view.at(0));
+    constexpr bool same{std::is_same_v<DynamicViewAtReturnType, int&>};
+    ASSERT_TRUE(same);
 }

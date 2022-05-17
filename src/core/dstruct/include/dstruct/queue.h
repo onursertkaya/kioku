@@ -32,7 +32,7 @@ class Queue
         return retval;
     }
 
-    std::size_t size() { return back_idx_ - front_idx_; }
+    [[nodiscard]] std::size_t size() { return back_idx_ - front_idx_; }
 
     bool empty() { return size() == 0U; }
 
