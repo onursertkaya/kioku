@@ -30,7 +30,6 @@ GTEST_TEST_FIXTURE_STR = "TEST_F"
 
 FUNCTION_MATCHING_PARENTHESES_REGEXP = ".*[\\(].*[\\{{\\)]$"
 GTEST_MACRO_MATCHING_PARENTHESES_REGEXP = ".*[\\(].*[\\)]"
-CACHE_FILE_NAME = "kioku_cache.pkl"
 
 # todo, put coloring utils into a constants class
 RESET = "\033[0m"

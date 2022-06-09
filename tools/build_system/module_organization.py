@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 import abc
 from pathlib import Path
 from typing import Type
 
 from tools.build_system.code_util import REPO_ROOT
-from tools.build_system.typing import PathString
+from tools.build_system.typing import OptPathString, PathString
 
 
 class ModuleOrganization(abc.ABC):
@@ -22,45 +24,62 @@ class ModuleOrganization(abc.ABC):
 
     @staticmethod
     def determine(
-        source_file: PathString, header_file: PathString
-    ) -> Type["ModuleOrganization"]:
-        src_path = Path(source_file)
-        hdr_path = Path(header_file)
+        source_file: OptPathString, header_file: OptPathString
+    ) -> Type[ModuleOrganization]:
+        # todo: check type hint is correct, looks wrong.
+        src_path = Path(source_file or "")
+        hdr_path = Path(header_file or "")
+
+        if src_path == Path():
+            assert hdr_path != Path()
+            return HeaderOnly
 
         src_dir = src_path.parent
         hdr_dir = hdr_path.parent
         src_name = src_path.name
         hdr_name = hdr_path.name
-        common = ""
+        common_substr = ""
         for char_hdr, char_src in zip(str(hdr_dir), str(src_dir)):
             if char_hdr == char_src:
-                common += char_hdr
+                common_substr += char_hdr
             else:
                 break
 
-        module_path = Path(common)
+        module_path = Path(common_substr)
         module_name = module_path.name
 
         nested_header = (
-            f"{module_path}/{ModuleOrganization.INCLUDES_DIR}/{module_name}/{hdr_name}"
+            module_path / ModuleOrganization.INCLUDES_DIR / module_name / hdr_name
         )
-        nested_source = f"{module_path}/{ModuleOrganization.SOURCES_DIR}/{src_name}"
+        nested_source = module_path / ModuleOrganization.SOURCES_DIR / src_name
 
-        at_base_header = f"{module_path}/{hdr_name}"
-        at_base_source = f"{module_path}/{src_name}"
+        at_base_header = module_path / hdr_name
+        at_base_source = module_path / src_name
 
-        if source_file == nested_source:
-            if header_file == nested_header:
+        if src_path == nested_source:
+            if hdr_path == nested_header:
                 return BothNested
-            elif header_file == at_base_header:
+            elif hdr_path == at_base_header:
                 return RelativeNestedSource
-        elif source_file == at_base_source:
-            if header_file == nested_header:
+        elif src_path == at_base_source:
+            if hdr_path == nested_header:
                 return RelativeNestedHeader
-            elif header_file == at_base_header:
+            elif hdr_path == at_base_header:
                 return SameDirectory
 
         raise ModuleOrganization.InvalidOrganization
+
+
+class HeaderOnly(ModuleOrganization):
+    """C++ organization for header-only setup.
+
+    In this organization there is no source file. Header is included by other
+    modules.
+    """
+
+    @staticmethod
+    def includepath(header_file: PathString) -> str:
+        return f"{ModuleOrganization.INCLUDEPATH_PREFIX}{Path(header_file).parents[1]}"
 
 
 class SameDirectory(ModuleOrganization):
@@ -73,6 +92,7 @@ class SameDirectory(ModuleOrganization):
     where the module name is b.
     """
 
+    @staticmethod
     def includepath(header_file: PathString) -> str:
         return f"{ModuleOrganization.INCLUDEPATH_PREFIX}{Path(header_file).parent}"
 
@@ -87,6 +107,7 @@ class RelativeNestedHeader(ModuleOrganization):
     where the module name is b.
     """
 
+    @staticmethod
     def includepath(header_file: PathString) -> str:
         return f"{ModuleOrganization.INCLUDEPATH_PREFIX}{Path(header_file).parents[1]}"
 
@@ -101,6 +122,7 @@ class RelativeNestedSource(ModuleOrganization):
     where the module name is b.
     """
 
+    @staticmethod
     def includepath(header_file: PathString) -> str:
         return f"{ModuleOrganization.INCLUDEPATH_PREFIX}{REPO_ROOT}"
 
@@ -115,6 +137,7 @@ class BothNested(ModuleOrganization):
     where the module name is b.
     """
 
+    @staticmethod
     def includepath(header_file: PathString) -> str:
         return f"{ModuleOrganization.INCLUDEPATH_PREFIX}{Path(header_file).parents[1]}"
 
@@ -122,5 +145,6 @@ class BothNested(ModuleOrganization):
 class Inapplicable(ModuleOrganization):
     """Inapplicable header/source organization for test and main files."""
 
+    @staticmethod
     def includepath(header_file: PathString) -> str:
         raise RuntimeError

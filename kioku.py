@@ -23,7 +23,7 @@ from tools.build_system.kioku_config import parse_host_config
 def merge_args_and_config() -> argparse.Namespace:
     """Combine cli arguments and disk-loaded configuration.
 
-    Precedence will be given to cli arguments for duplicate fields.
+    Priority will be given to cli arguments for duplicate fields.
     """
     host_config = parse_host_config()
     args = parse_args()

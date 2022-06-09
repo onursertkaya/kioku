@@ -1,6 +1,8 @@
-from dataclasses import dataclass
+from __future__ import annotations
+
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Tuple
+from typing import List, Set
 
 from tools.build_system.build_config import BuildConfig
 from tools.build_system.code_util import REPO_ROOT, calculate_checksum, get_all_sources
@@ -8,19 +10,29 @@ from tools.build_system.dependencies import Dependencies
 from tools.build_system.include_resolution import IncludedHeaders
 from tools.build_system.module_organization import Inapplicable, ModuleOrganization
 from tools.build_system.source_resolution import SourceType, resolve_source_file_type
-from tools.build_system.typing import PathString, StringList
+from tools.build_system.typing import OptPathString, PathString, StringList
 
 
 @dataclass(frozen=True)
 class Target:
     """A compilable translation unit."""
 
-    source_file: PathString
-    header_file: PathString  # TODO: or None! in case of tests
+    source_file: OptPathString
+    includes: IncludedHeaders
+    source_checksum: str
+    include_checksums: Set[str]
 
-    external_includes: StringList
-    internal_includes: StringList
-    include_checksums: StringList
+    @classmethod
+    def make(cls, source_file: OptPathString, includes: IncludedHeaders):
+        assert source_file
+        return cls(
+            source_file=source_file,
+            includes=includes,
+            source_checksum=calculate_checksum(source_file),
+            include_checksums=(
+                set(map(calculate_checksum, includes.all)) if includes.all else set()
+            ),
+        )
 
     @property
     def name(self) -> Path:
@@ -28,36 +40,38 @@ class Target:
         return Path(base_stripped.replace("/", "-"))
 
     @property
-    def all_includes(self) -> StringList:
-        return self.external_includes + self.internal_includes
-
-    @property
-    def source_checksum(self):
-        return calculate_checksum(self.source_file)
-
-    @property
     def source_type(self) -> SourceType:
         return resolve_source_file_type(self.source_file)
 
     @property
-    def includepath_statement(self):
-        return self._module_organization.includepath(self.header_file)
+    def own_includepath_statement(self) -> str:
+        module_org = (
+            Inapplicable
+            if (self.source_type == SourceType.TEST)
+            or (self.source_type == SourceType.MAIN)
+            else ModuleOrganization.determine(self.source_file, self.includes.own)
+        )
+
+        return module_org.includepath(self.includes.own)
 
     @property
-    def _module_organization(self) -> ModuleOrganization:
-        if (self.source_type == SourceType.TEST) or (
-            self.source_type == SourceType.MAIN
-        ):
-            return Inapplicable
-        else:
-            return ModuleOrganization.determine(self.source_file, self.header_file)
+    def internal_dependencies_includepath_statements(self) -> StringList:
+        return [
+            ModuleOrganization.determine(None, internal_include).includepath(
+                internal_include
+            )
+            for internal_include in self.includes.internal
+        ]
 
     def __str__(self) -> str:
         """Helper for directly printing a target object with a nice format."""
-        print(f"- {self.name}")
+        string = f"- {self.name}\n"
         for k, v in self.__dict__.items():
-            print(f"\t- {k}: {v}")
-        return ""
+            if isinstance(v, IncludedHeaders):
+                string += f"\t- {k}:\n\t\t{v}"
+            else:
+                string += f"\t- {k}: {v}\n"
+        return string
 
     def make_objfile_path(self, build_directory: PathString) -> Path:
         return Path(build_directory) / self.name.with_suffix(".o")
@@ -68,14 +82,16 @@ class Target:
         ), f"{self.name} can not be an executable."
         return Path(build_directory) / self.name.with_suffix("")
 
-    def checksums_match(self, other: "Target") -> bool:
+    def checksums_match(self, other: Target) -> bool:
         """Compare both file checksums and included files' checksums."""
         assert (
             self.name == other.name
         ), "Target names must match in order to compare checksums."
-        return self.source_checksum == other.source_checksum and set(
-            self.include_checksums
-        ) == set(other.include_checksums)
+
+        source_match = self.source_checksum == other.source_checksum
+        includes_match = self.include_checksums == other.include_checksums
+
+        return source_match and includes_match
 
 
 class TargetExploration:
@@ -92,16 +108,9 @@ class TargetExploration:
     def _create_target_from_source_file(self, source_file: PathString) -> Target:
         includes = IncludedHeaders.get(source_file, self.dependencies)
 
-        include_checksums = list(
-            map(calculate_checksum, includes.internal + includes.external)
-        )
-
-        return Target(
+        return Target.make(
             source_file=source_file,
-            header_file=includes.own,
-            external_includes=includes.external,
-            internal_includes=includes.internal,
-            include_checksums=include_checksums,
+            includes=includes,
         )
 
     def scan_targets(self) -> List[Target]:

@@ -22,8 +22,8 @@ def get_commit_hash():
     return subprocess.check_output(["git", "rev-parse", "HEAD"]).decode("utf-8").strip()
 
 
-def calculate_checksum(src_file: PathString):
-    with open(src_file) as f:
+def calculate_checksum(file: PathString):
+    with open(file) as f:
         file_content = f.read()
     return hashlib.md5(file_content.encode("utf-8")).hexdigest()
 

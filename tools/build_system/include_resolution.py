@@ -1,28 +1,44 @@
+from __future__ import annotations
+
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Tuple
 
-from tools.build_system.code_util import REPO_ROOT, get_all_headers
+from tools.build_system.code_util import get_all_headers
 from tools.build_system.constants import CPP_INCLUDE_STR, HEADER_EXTENSIONS
 from tools.build_system.dependencies import Dependencies
 from tools.build_system.module_organization import ModuleOrganization
 from tools.build_system.source_resolution import SourceType, resolve_source_file_type
-from tools.build_system.typing import MaybeString, PathString, StringList
+from tools.build_system.typing import OptString, PathString, StringList
 
 
 @dataclass(frozen=True)
 class IncludedHeaders:
     """Full paths to included headers in a source file."""
 
-    own: str
+    own: OptString
     internal: StringList
     external: StringList
+
+    @property
+    def all(self) -> StringList:
+        return [*self.internal, *self.external] + [self.own] if self.own else []
+
+    def __str__(self) -> str:
+        """Helper for directly printing a target object with a nice format."""
+        string = f"- {self.own}\n"
+        for k, v in self.__dict__.items():
+            string += f"\t\t\t* {k}:"
+            if isinstance(v, list):
+                string += "\n" + "\n".join(["\t\t\t\t+ " + elem for elem in v]) + "\n"
+            else:
+                string += f" {v}\n"
+        return string
 
     @classmethod
     def get(
         cls, source_file_path: PathString, dependencies: Dependencies
-    ) -> "IncludedHeaders":
+    ) -> IncludedHeaders:
         """Get list of full paths to internal and external headers included in a source file."""
         own_header_candidates = []
         internal_includes_paths, external_includes_paths = [], []
@@ -65,11 +81,13 @@ class IncludedHeaders:
             )
 
         own_header = own_header_candidates[0] if own_header_candidates else None
+        if own_header:
+            internal_includes_paths.remove(own_header)
 
         return cls(
             own_header,
-            list(set(internal_includes_paths)),
-            list(set(external_includes_paths)),
+            sorted(set(internal_includes_paths)),
+            sorted(set(external_includes_paths)),
         )
 
 
@@ -89,21 +107,19 @@ def _parse_include_statements(source_file_path: PathString) -> StringList:
     return headers
 
 
-def _find_header_relpath_with_include_statement(include_statement: str) -> MaybeString:
+def _find_header_relpath_with_include_statement(include_statement: str) -> OptString:
     for header in get_all_headers():
-        # check for substring
-        if include_statement in header:
+        if include_statement in header:  # check for substring
             return header
     return None
 
 
 def _search_for_own_header(
     source_file_path: PathString, include_statement: str
-) -> MaybeString:
+) -> OptString:
     for ext in HEADER_EXTENSIONS:
         own_header_candidate = Path(source_file_path).with_suffix(f".{ext}").name
-        # check for substring
-        if own_header_candidate in include_statement:
+        if own_header_candidate in include_statement:  # check for substring
             return _find_header_relpath_with_include_statement(include_statement)
     return None
 
@@ -130,11 +146,10 @@ def _search_for_internal_headers(include_statement: str) -> StringList:
 
 def _search_for_external_headers(
     include_statement: str, dependencies: Dependencies
-) -> MaybeString:
+) -> OptString:
     """Scan include statement in external dependencies' include statements."""
-    deps = dependencies
+    deps = dependencies  # todo: why?
     for dep in deps.get_list:
-        # check for substring
-        if include_statement in dep.include_statement:
+        if include_statement in dep.include_statement:  # check for substring
             return str(deps.path / dep.header_relpath)
     return None

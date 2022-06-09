@@ -13,7 +13,7 @@ class Modes:
     CODE_QUAL = "codequal"
 
 
-def parse_args():
+def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
 
     subparsers = parser.add_subparsers(help="", dest="subparser")
@@ -78,4 +78,7 @@ def parse_args():
     # =========
     subparsers.add_parser(Modes.BUILD_DOCKER, help="Build the kioku docker image.")
 
-    return parser.parse_args()
+    args = parser.parse_args()
+    if getattr(args, "subparser", None) is None:
+        raise ValueError("A command is required, see help for options.")
+    return args
