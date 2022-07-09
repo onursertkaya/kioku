@@ -15,10 +15,6 @@ from tools.build_system.docker import is_in_docker
 from tools.build_system.kioku_args import Modes, parse_args
 from tools.build_system.kioku_config import parse_host_config
 
-# pylint: disable=too-many-locals
-# pylint: disable=import-outside-toplevel
-# pylint: disable=too-many-branches
-
 
 def merge_args_and_config() -> argparse.Namespace:
     """Combine cli arguments and disk-loaded configuration.
@@ -42,7 +38,10 @@ def merge_args_and_config() -> argparse.Namespace:
 
 
 def host_main():
+    """Run main function that is invoked on host."""
+
     def forward_to_docker(config):
+        """Run requested command and arguments in docker."""
         from tools.build_system.docker import run as run_in_docker
 
         rw_volumes = {
@@ -68,8 +67,12 @@ def host_main():
         forward_to_docker(config)
 
 
-def main():
+def docker_main():
+    """Run main function that is invoked inside docker container."""
     args = parse_args()
+    # pylint: disable=import-outside-toplevel
+    # pylint: disable=too-many-branches
+    # pylint: disable=too-many-locals
 
     if args.subparser == Modes.DEPS:
         from tools.build_system.dependencies import Dependencies
@@ -79,6 +82,7 @@ def main():
         dep_manager.build()
 
     elif args.subparser == Modes.CODE_QUAL:
+        # TODO: unify similar jobs under common commands, fix the import scheme.
         if args.clang_format:
             from tools.build_system.code_quality_util import clang_format
 
@@ -99,14 +103,10 @@ def main():
             from tools.build_system.code_quality_util import py_check_all
 
             py_check_all()
-        elif args.py_black:
-            from tools.build_system.code_quality_util import py_black
+        elif args.py_format:
+            from tools.build_system.code_quality_util import py_format
 
-            py_black()
-        elif args.py_isort:
-            from tools.build_system.code_quality_util import py_isort
-
-            py_isort()
+            py_format()
         elif args.py_test:
             from tools.build_system.code_quality_util import py_test
 
@@ -154,8 +154,13 @@ def main():
         run_in_debugger(selected)
 
 
-if __name__ == "__main__":
+def main():
+    """Entrypoint for the main program."""
     if is_in_docker():
-        main()
+        docker_main()
     else:
         host_main()
+
+
+if __name__ == "__main__":
+    main()

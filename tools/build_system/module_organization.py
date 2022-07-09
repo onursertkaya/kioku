@@ -1,3 +1,4 @@
+"""Types to represent a C++ module's source/header organization."""
 from __future__ import annotations
 
 import abc
@@ -16,17 +17,17 @@ class ModuleOrganization(abc.ABC):
     INCLUDEPATH_PREFIX = "-I"
 
     class InvalidOrganization(Exception):
-        """Exception to be raised when a source/header organization is not allowed."""
+        """Exception to be raised when a source/header organization could not be determined."""
 
     @abc.abstractstaticmethod
     def includepath(header_file: PathString) -> str:
-        pass
+        """Get includepath statement for the compiler."""
 
     @staticmethod
     def determine(
         source_file: OptPathString, header_file: OptPathString
     ) -> Type[ModuleOrganization]:
-        # todo: check type hint is correct, looks wrong.
+        """Determine the module organization type based on source and header paths."""
         src_path = Path(source_file or "")
         hdr_path = Path(header_file or "")
 
@@ -34,18 +35,11 @@ class ModuleOrganization(abc.ABC):
             assert hdr_path != Path()
             return HeaderOnly
 
-        src_dir = src_path.parent
-        hdr_dir = hdr_path.parent
         src_name = src_path.name
         hdr_name = hdr_path.name
-        common_substr = ""
-        for char_hdr, char_src in zip(str(hdr_dir), str(src_dir)):
-            if char_hdr == char_src:
-                common_substr += char_hdr
-            else:
-                break
 
-        module_path = Path(common_substr)
+        module_path = ModuleOrganization._find_common_base_path(src_path, hdr_path)
+
         module_name = module_path.name
 
         nested_header = (
@@ -69,6 +63,19 @@ class ModuleOrganization(abc.ABC):
 
         raise ModuleOrganization.InvalidOrganization
 
+    @staticmethod
+    def _find_common_base_path(first: Path, second: Path) -> Path:
+        first_dir = first.parent
+        second_dir = second.parent
+        common_substr = ""
+        for char_hdr, char_src in zip(str(first_dir), str(second_dir)):
+            if char_hdr == char_src:
+                common_substr += char_hdr
+            else:
+                break
+
+        return Path(common_substr)
+
 
 class HeaderOnly(ModuleOrganization):
     """C++ organization for header-only setup.
@@ -79,6 +86,7 @@ class HeaderOnly(ModuleOrganization):
 
     @staticmethod
     def includepath(header_file: PathString) -> str:
+        """Get includepath statement for the compiler."""
         return f"{ModuleOrganization.INCLUDEPATH_PREFIX}{Path(header_file).parents[1]}"
 
 
@@ -94,6 +102,7 @@ class SameDirectory(ModuleOrganization):
 
     @staticmethod
     def includepath(header_file: PathString) -> str:
+        """Get includepath statement for the compiler."""
         return f"{ModuleOrganization.INCLUDEPATH_PREFIX}{Path(header_file).parent}"
 
 
@@ -109,6 +118,7 @@ class RelativeNestedHeader(ModuleOrganization):
 
     @staticmethod
     def includepath(header_file: PathString) -> str:
+        """Get includepath statement for the compiler."""
         return f"{ModuleOrganization.INCLUDEPATH_PREFIX}{Path(header_file).parents[1]}"
 
 
@@ -124,6 +134,7 @@ class RelativeNestedSource(ModuleOrganization):
 
     @staticmethod
     def includepath(header_file: PathString) -> str:
+        """Get includepath statement for the compiler."""
         return f"{ModuleOrganization.INCLUDEPATH_PREFIX}{REPO_ROOT}"
 
 
@@ -139,12 +150,5 @@ class BothNested(ModuleOrganization):
 
     @staticmethod
     def includepath(header_file: PathString) -> str:
+        """Get includepath statement for the compiler."""
         return f"{ModuleOrganization.INCLUDEPATH_PREFIX}{Path(header_file).parents[1]}"
-
-
-class Inapplicable(ModuleOrganization):
-    """Inapplicable header/source organization for test and main files."""
-
-    @staticmethod
-    def includepath(header_file: PathString) -> str:
-        raise RuntimeError

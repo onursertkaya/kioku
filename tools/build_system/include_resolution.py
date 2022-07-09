@@ -1,3 +1,4 @@
+"""Tools for representing included headers and extracting them from source files."""
 from __future__ import annotations
 
 import re
@@ -7,9 +8,20 @@ from pathlib import Path
 from tools.build_system.code_util import get_all_headers
 from tools.build_system.constants import CPP_INCLUDE_STR, HEADER_EXTENSIONS
 from tools.build_system.dependencies import Dependencies
-from tools.build_system.module_organization import ModuleOrganization
 from tools.build_system.source_resolution import SourceType, resolve_source_file_type
 from tools.build_system.typing import OptString, PathString, StringList
+
+
+class AmbigousOwnHeader(Exception):
+    """Exception to be raised when multiple possible own header candidates were found."""
+
+
+class OwnHeaderNotFound(Exception):
+    """Exception to be raised when no own header candidates were found."""
+
+
+class HeaderFileDoesNotExist(Exception):
+    """Exception to be raised when a header file could not be found in the repository."""
 
 
 @dataclass(frozen=True)
@@ -22,10 +34,11 @@ class IncludedHeaders:
 
     @property
     def all(self) -> StringList:
+        """Get a complete list of included headers."""
         return [*self.internal, *self.external] + [self.own] if self.own else []
 
     def __str__(self) -> str:
-        """Helper for directly printing a target object with a nice format."""
+        """Get a nice string representation of this target."""
         string = f"- {self.own}\n"
         for k, v in self.__dict__.items():
             string += f"\t\t\t* {k}:"
@@ -40,7 +53,7 @@ class IncludedHeaders:
         cls, source_file_path: PathString, dependencies: Dependencies
     ) -> IncludedHeaders:
         """Get list of full paths to internal and external headers included in a source file."""
-        own_header_candidates = []
+        own_header_candidates: StringList = []
         internal_includes_paths, external_includes_paths = [], []
 
         for include_statement in _parse_include_statements(source_file_path):
@@ -59,26 +72,12 @@ class IncludedHeaders:
                 internal_includes_paths.extend(found_internals)
 
             if not found_own and not found_external and not found_internals:
-                raise FileNotFoundError(
-                    f"Inclusion {include_statement} in {source_file_path}"
-                    + " "
-                    + "is not found in the repository."
+                raise HeaderFileDoesNotExist(
+                    f"Inclusion {include_statement} in {source_file_path} "
+                    "is not found in the repository."
                 )
 
-        if len(own_header_candidates) == 0:
-            # If a source file does not have a candidate, it is either a test or a main file.
-            # Check if "test" or "main" is in the filename as a cheap operation.
-            if not ("test" in str(source_file_path) or "main" in str(source_file_path)):
-                # If there's no indication of being a test or main file, resolve by reading
-                # the file content as a last resort.
-                if resolve_source_file_type(source_file_path) == SourceType.SRC:
-                    raise ModuleOrganization.InvalidOrganization(
-                        f"{source_file_path} could not find its header."
-                    )
-        elif len(own_header_candidates) > 1:
-            raise ModuleOrganization.InvalidOrganization(
-                f"{source_file_path} has multiple candidates: {', '.join(own_header_candidates)}."
-            )
+        _verify_own_header(own_header_candidates, source_file_path)
 
         own_header = own_header_candidates[0] if own_header_candidates else None
         if own_header:
@@ -97,7 +96,7 @@ def _parse_include_statements(source_file_path: PathString) -> StringList:
         for line in f.read().splitlines():
             header_exts_regex_group = "(" + "|".join(HEADER_EXTENSIONS) + ")"
             include_candidate = re.match(
-                f'^{CPP_INCLUDE_STR} ".*\.{header_exts_regex_group}"$', line
+                rf'^{CPP_INCLUDE_STR} ".*\.{header_exts_regex_group}"$', line
             )
             if include_candidate:
                 header = include_candidate.string
@@ -117,6 +116,7 @@ def _find_header_relpath_with_include_statement(include_statement: str) -> OptSt
 def _search_for_own_header(
     source_file_path: PathString, include_statement: str
 ) -> OptString:
+    """Scan include statement that would match the source file's name."""
     for ext in HEADER_EXTENSIONS:
         own_header_candidate = Path(source_file_path).with_suffix(f".{ext}").name
         if own_header_candidate in include_statement:  # check for substring
@@ -151,5 +151,29 @@ def _search_for_external_headers(
     deps = dependencies  # todo: why?
     for dep in deps.get_list:
         if include_statement in dep.include_statement:  # check for substring
-            return str(deps.path / dep.header_relpath)
+            return str(deps._path / dep.header_relpath)
     return None
+
+
+def _verify_own_header(own_header_candidates: StringList, source_file_path: PathString):
+    """Verify own header of a source file given the candidates.
+
+    Raises
+        OwnHeaderNotFound: If a non-test, non-main source file has no corresponding header.
+        AmbigousOwnHeader: If multiple matching headers were found.
+    """
+    if len(own_header_candidates) == 0:
+        # If a source file does not have a candidate, it is either a test or a main file.
+        # Check if "test" or "main" is in the filename as a cheap operation.
+        if not ("test" in str(source_file_path) or "main" in str(source_file_path)):
+            # If there's no indication of being a test or main file, resolve by reading
+            # the file content as a last resort.
+            if resolve_source_file_type(source_file_path) == SourceType.SRC:
+                raise OwnHeaderNotFound(
+                    f"{source_file_path} could not find its header."
+                )
+    elif len(own_header_candidates) > 1:
+        raise AmbigousOwnHeader(
+            f"{source_file_path} has multiple own header candidates:\n"
+            f"\t{', '.join(own_header_candidates)}."
+        )

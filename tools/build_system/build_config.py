@@ -1,9 +1,11 @@
+"""Configuration module for C++ builds."""
 from dataclasses import dataclass, field
 from pathlib import Path
 
 
 @dataclass(frozen=True)
 class BuildConfig:
+    """Configuration struct for C++ builds."""
 
     debug: bool = False
     compiler: str = None

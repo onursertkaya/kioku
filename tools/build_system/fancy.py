@@ -1,11 +1,12 @@
-#!/usr/bin/python3
+"""Fancy CLI utilities."""
+import shlex
 import shutil
 import subprocess
 import sys
 import time
 from enum import Enum
 from subprocess import CalledProcessError, check_call
-from typing import List, NewType, Optional, Union
+from typing import Optional, Union
 
 from tools.build_system.constants import BOLDBLUE, BOLDGREEN, BOLDRED, BOLDYELLOW, RESET
 from tools.build_system.typing import StringList
@@ -14,6 +15,8 @@ LINE_BREAK_THRESHOLD = 40
 
 
 class MessageType(Enum):
+    """Message type when running fancy printing."""
+
     SUCCESS = 0
     WARNING = 1
     ERROR = 2
@@ -22,8 +25,9 @@ class MessageType(Enum):
 
 
 def fancy_print(
-    msg: str, msg_type: Union[MessageType, None] = MessageType.NONE, flash: bool = False
+    msg: str, msg_type: MessageType = MessageType.NONE, flash: bool = False
 ):
+    """Print a message to stdout in a nice format."""
     assert isinstance(msg, str)
 
     if msg_type == MessageType.SUCCESS:
@@ -48,8 +52,40 @@ def fancy_print(
 
 
 def fancy_separator(length: Optional[int] = 0):
+    """Print a message to stdout in a nice format."""
     length = length if length != 0 else _get_term_width() // 2
     fancy_print("=" * length, msg_type=MessageType.OTHER)
+
+
+def fancy_run(
+    cmd: Union[str, StringList],
+    error_message: Optional[str] = "",
+    silent: Optional[bool] = False,
+    keep_running: Optional[bool] = False,
+):
+    """Message type when running fancy printing."""
+    if isinstance(cmd, list):
+        assert all([isinstance(item, str) for item in cmd])
+    else:
+        cmd = shlex.split(cmd)
+
+    # TODO: no longer necessary in python3.8, convert to subprocess.run(capture_output=True)
+    suppressing_kwargs = {}
+    if not silent:
+        msg = _format_line(cmd)
+        fancy_print(msg, MessageType.NONE)
+    else:
+        suppressing_kwargs = {
+            "stdout": subprocess.DEVNULL,
+            "stderr": subprocess.DEVNULL,
+        }
+
+    try:
+        check_call(cmd, **suppressing_kwargs)
+    except CalledProcessError:
+        fancy_print(error_message, msg_type=MessageType.ERROR)
+        if not keep_running:
+            sys.exit(-1)
 
 
 def _get_term_width() -> int:
@@ -94,29 +130,3 @@ def _format_line(cmd: StringList):
         retval = "\n\t".join(lines)
 
     return retval
-
-
-def fancy_run(
-    cmd: StringList,
-    error_message: Optional[str] = "",
-    silent: Optional[bool] = False,
-    keep_running: Optional[bool] = False,
-):
-    assert isinstance(cmd, list)
-
-    suppressing_kwargs = {}
-    if not silent:
-        msg = _format_line(cmd)
-        fancy_print(msg, MessageType.NONE)
-    else:
-        suppressing_kwargs = {
-            "stdout": subprocess.DEVNULL,
-            "stderr": subprocess.DEVNULL,
-        }
-
-    try:
-        check_call(cmd, **suppressing_kwargs)
-    except CalledProcessError:
-        fancy_print(error_message, msg_type=MessageType.ERROR)
-        if not keep_running:
-            sys.exit(-1)

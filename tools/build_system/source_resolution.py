@@ -1,44 +1,41 @@
+"""Utilities to represent and determine source file type."""
 import re
 from enum import Enum
 
 from tools.build_system.constants import (
     CPP_INCLUDE_STR,
-    CPP_MAIN_RETURN_TYPES,
-    CPP_MAIN_STR,
-    FUNCTION_MATCHING_PARENTHESES_REGEXP,
-    GTEST_MACRO_MATCHING_PARENTHESES_REGEXP,
-    GTEST_TEST_FIXTURE_STR,
-    GTEST_TEST_STR,
     HEADER_EXTENSIONS,
     SOURCE_EXTENSIONS,
 )
 from tools.build_system.fancy import MessageType, fancy_print
 from tools.build_system.typing import PathString
 
+CPP_MAIN_STR = "main"
+CPP_MAIN_RETURN_TYPES = ("int", "void")
+MATCHING_FUNC_PARENTHESIS_REGEXP = r"\(.*\)"
+GTEST_TEST_MACROS = ("TEST", "TEST_F")
+
 
 class SourceType(Enum):
+    """Enumeration to represent source file type."""
+
     SRC = 0
     MAIN = 1
     TEST = 2
 
     class UnknownSourceType(Exception):
-        pass
+        """Exception to be raised when a source type cannot be determined."""
 
-    class NotATarget(Exception):
-        pass
+    class InvalidSourceExtension(Exception):
+        """Exception to be raised when a source extension is not valid."""
 
 
 def _is_main_entrypoint(source_file_path: PathString) -> bool:
     """Determine if a source file contains a main entrypoint."""
     with open(source_file_path, "r") as f:
+        re_query = f"^({'|'.join(CPP_MAIN_RETURN_TYPES)}) {CPP_MAIN_STR}{MATCHING_FUNC_PARENTHESIS_REGEXP}"
         for line in f.read().splitlines():
-            re_query = (
-                f"^({'|'.join(CPP_MAIN_RETURN_TYPES)})"
-                + " "
-                + f"{CPP_MAIN_STR}{FUNCTION_MATCHING_PARENTHESES_REGEXP}"
-            )
-            main_candidate = re.match(re_query, line)
-            if main_candidate:
+            if re.match(re_query, line):
                 return True
     return False
 
@@ -48,8 +45,7 @@ def _is_gtest_file(source_file_path: PathString) -> bool:
     with open(source_file_path, "r") as f:
         for line in f.read().splitlines():
             re_query = (
-                f"^({GTEST_TEST_STR}|{GTEST_TEST_FIXTURE_STR})"
-                + f"{GTEST_MACRO_MATCHING_PARENTHESES_REGEXP}"
+                f"^({'|'.join(GTEST_TEST_MACROS)}){MATCHING_FUNC_PARENTHESIS_REGEXP}.*"
             )
             gtest_candidate = re.match(re_query, line)
             if gtest_candidate:
@@ -83,8 +79,10 @@ def _is_regular_translation_unit(source_file_path: str) -> bool:
 
 
 def resolve_source_file_type(source_file_path: PathString) -> SourceType:
+    """Resolve a source file type based on file content."""
+
     if not any([str(source_file_path).endswith(ext) for ext in SOURCE_EXTENSIONS]):
-        raise SourceType.NotATarget(
+        raise SourceType.InvalidSourceExtension(
             f"Invalid file extension for the file {source_file_path} as a target."
         )
     # todo, the call order below matters as is_regular_translation_unit just checks

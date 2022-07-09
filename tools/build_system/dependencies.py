@@ -1,3 +1,4 @@
+"""Module for managing and maintaining repo dependencies."""
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -9,6 +10,7 @@ from tools.build_system.typing import StringList
 
 @dataclass(frozen=True)
 class Dependency:
+    """Representation of a dependency."""
 
     name: str
     github_url: str
@@ -25,14 +27,17 @@ class Dependency:
 
     @property
     def header_relpath(self) -> Path:
+        """Get the relative path to the main header file."""
         return Path(self.name) / self.relative_include_path / self.include_statement
 
     def make_includepath_statement(self, dependencies_root: Path) -> str:
+        """Get includepath statement for the compiler."""
         return f"-I{dependencies_root / self.name / self.relative_include_path}"
 
     def make_objfiles_dir_and_list(
         self, dependencies_path: Path, debug_build: bool
     ) -> Tuple[Path, StringList]:
+        """Make an object file directory as well as a list of object file names."""
         built_files_dir = (
             Dependencies.DEFAULT_DEBUG_BUILD_DIR
             if debug_build
@@ -46,13 +51,15 @@ class Dependency:
 
 
 class Dependencies:
+    """Repo dependencies as code."""
 
     DEFAULT_BUILD_DIR = Path("build")
     DEFAULT_DEBUG_BUILD_DIR = Path("build_debug")
 
     def __init__(self, path: Path) -> None:
-        self.path = path
-        self.path.mkdir(exist_ok=True)
+        """Make an instance."""
+        self._path = path
+        self._path.mkdir(exist_ok=True)
 
         self._deps = [
             Dependency(
@@ -77,13 +84,23 @@ class Dependencies:
             )
         ]
 
+    def query_by_header(self, header: str) -> Dependency:
+        return next(
+            filter(
+                lambda dep: str(self._path / dep.header_relpath) == header,
+                self._deps,
+            )
+        )
+
     @property
     def get_list(self) -> List[Dependency]:
+        """Get the list of dependencies."""
         return self._deps
 
     def build(self):
+        """Build all the dependencies."""
         current_dir = Path.cwd()
-        os.chdir(str(self.path))
+        os.chdir(str(self._path))
         for dep_dir in self.path.iterdir():
             os.chdir(dep_dir)
             if dep_dir.name == "googletest":
@@ -107,8 +124,9 @@ class Dependencies:
         os.chdir(current_dir)
 
     def fetch(self):
+        """Fetch the mandatory dependencies."""
         current_dir = Path.cwd()
-        os.chdir(str(self.path))
+        os.chdir(str(self._path))
         dir_content = [dep_dir.name for dep_dir in self.path.iterdir()]
         for dep in self.deps:
             if dep.name not in dir_content:
@@ -123,17 +141,15 @@ class Dependencies:
                 cmd = ["git", "pull", "origin", dep.default_branch]
                 fancy_separator()
                 fancy_run(cmd)
-            os.chdir(str(self.path))
+            os.chdir(str(self._path))
         os.chdir(current_dir)
 
     def fetch_misc_deps(self):
+        """Fetch the dependencies in misc list."""
         current_dir = Path.cwd()
-        os.chdir(str(self.path))
-        try:
-            for dep in self.misc_deps:
-                cmd = ["git", "clone", dep.github_url]
-                fancy_separator()
-                fancy_run(cmd)
-        except:
-            None
+        os.chdir(str(self._path))
+        for dep in self.misc_deps:
+            cmd = ["git", "clone", dep.github_url]
+            fancy_separator()
+            fancy_run(cmd)
         os.chdir(current_dir)

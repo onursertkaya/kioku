@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+"""Source code utilities."""
 import hashlib
 import subprocess
 from functools import lru_cache
@@ -19,10 +19,12 @@ REPO_ROOT = (
 
 
 def get_commit_hash():
+    """Get the current git commit's hash."""
     return subprocess.check_output(["git", "rev-parse", "HEAD"]).decode("utf-8").strip()
 
 
 def calculate_checksum(file: PathString):
+    """Calculate the md5 checksum of a file."""
     with open(file) as f:
         file_content = f.read()
     return hashlib.md5(file_content.encode("utf-8")).hexdigest()
@@ -31,7 +33,6 @@ def calculate_checksum(file: PathString):
 @lru_cache(maxsize=None)
 def _scan_with_extensions(directory: Path, extensions: StringList) -> StringList:
     """Scan all files with extensions, starting from directory."""
-
     retval = []
     for ext in extensions:
         assert "." not in ext
@@ -46,6 +47,7 @@ def _filter_by_extension(file_list: StringList, extension: str) -> StringList:
 
 @lru_cache(maxsize=1)
 def get_all_headers():
+    """Scan all the header files based on known extensions."""
     all_cpp_files = _scan_with_extensions(
         Path(REPO_ROOT), HEADER_EXTENSIONS + SOURCE_EXTENSIONS
     )
@@ -57,6 +59,7 @@ def get_all_headers():
 
 @lru_cache(maxsize=1)
 def get_all_sources():
+    """Scan all the source files based on known extensions."""
     all_cpp_files = _scan_with_extensions(
         Path(REPO_ROOT), HEADER_EXTENSIONS + SOURCE_EXTENSIONS
     )
@@ -68,11 +71,13 @@ def get_all_sources():
 
 @lru_cache(maxsize=1)
 def get_all_py_files():
+    """Scan all the python files based on known extensions."""
     return _scan_with_extensions(Path(REPO_ROOT), (PY_EXTENSION,))
 
 
 @lru_cache(maxsize=None)
 def get_system_include_paths(compiler: str):
+    """Query a compiler for system include search paths."""
     result = subprocess.run(
         [compiler, "-xc++", "-E", "-v", "/dev/null"],
         stdout=subprocess.PIPE,

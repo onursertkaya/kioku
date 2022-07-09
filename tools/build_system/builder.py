@@ -1,10 +1,10 @@
-#!/usr/bin/python3
+"""C++ program builder module."""
 from pathlib import Path
 from typing import List
 
 from tools.build_system.build_config import BuildConfig
 from tools.build_system.cache import Cache
-from tools.build_system.dependencies import Dependencies, Dependency
+from tools.build_system.dependencies import Dependencies
 from tools.build_system.fancy import (
     MessageType,
     fancy_print,
@@ -12,6 +12,7 @@ from tools.build_system.fancy import (
     fancy_separator,
 )
 from tools.build_system.target import SourceType, Target, TargetExploration
+from tools.build_system.typing import StringList
 
 # todo,
 # parallel build
@@ -19,6 +20,7 @@ from tools.build_system.target import SourceType, Target, TargetExploration
 
 
 class Builder:
+    """C++ program builder."""
 
     BIN_DIR = "bin"
     OBJ_DIR = "obj"
@@ -27,24 +29,26 @@ class Builder:
     BUILD_DIR = [BIN_DIR, OBJ_DIR, SO_DIR, TEST_DIR]
 
     def __init__(self, config: BuildConfig):
+        """Create an instance."""
         self._create_build_dir(config)
 
         # Prepare third party dependencies for compiler and linker.
-        self._deps = Dependencies(config.thirdparty_dep_directory)
+        deps = Dependencies(config.thirdparty_dep_directory)
 
         # Explore targets from current state of the repo.
         target_explorer = TargetExploration(config)
         self._targets = target_explorer.scan_targets()
 
         # Read and update the cache, then compare with current targets to extract a build list.
-        changelist = Cache(config).get_target_changelist(self._targets)
+        self._changelist = Cache(config).get_target_changelist(self._targets)
 
-        self._compiler = Compiler(config, changelist)
-        self._linker = Linker(config, changelist)
+        self._compiler = Compiler(config, deps)
+        self._linker = Linker(config, deps)
 
     def build(self):
-        self._compiler.build_translation_units()
-        self._linker.link_translation_units()
+        """Build C++ programs and libraries based on requested config."""
+        self._compiler.build_translation_units(self._changelist)
+        self._linker.link_translation_units(self._changelist)
 
     @staticmethod
     def _create_build_dir(config: BuildConfig):
@@ -54,17 +58,24 @@ class Builder:
 
 
 class Compiler:
-    def __init__(self, config: BuildConfig, changelist: List[Target]):
-        self._config = config
-        self._changelist = changelist
+    """C++ program compiler.
 
-    def build_translation_units(self, parallel: bool = False):
+    Converts source code to object code.
+    """
+
+    # pylint: disable=too-few-public-methods
+
+    def __init__(self, config: BuildConfig, deps: Dependencies):
+        """Create an instance."""
+        self._config = config
+        self._deps = deps
+
+    def build_translation_units(self, changelist: List[Target], parallel: bool = False):
+        """Build all translation units provided in the change list."""
         target_list = (
-            self._changelist
+            changelist
             if self._config.test
-            else filter(
-                lambda x: not x.source_type == SourceType.TEST, self._changelist
-            )
+            else filter(lambda x: not x.source_type == SourceType.TEST, changelist)
         )
 
         for target in target_list:
@@ -82,7 +93,7 @@ class Compiler:
         # todo: invalidate cache entry for this target, if compilation fails.
         fancy_run(compile_cmd, f"Compilation of target {target.name} failed.")
 
-    def _assemble_compile_command(self, target: Target):
+    def _assemble_compile_command(self, target: Target) -> StringList:
         includepaths = self._query_all_includepaths(target)
 
         flags = [
@@ -116,7 +127,9 @@ class Compiler:
     def _query_all_includepaths(self, target: Target) -> set:
         includepaths = set()
 
-        includepaths.add(target.own_includepath_statement)
+        if target.source_type == SourceType.SRC:
+            includepaths.add(target.own_includepath_statement)
+
         includepaths.update(target.internal_dependencies_includepath_statements)
         includepaths.update(
             self._scan_external_targets_for_includepath_statements(target)
@@ -127,87 +140,31 @@ class Compiler:
     def _scan_external_targets_for_includepath_statements(self, target: Target) -> set:
         external_includepaths = set()
         for external_header in target.includes.external:
-            dep = self._query_external_target_by_header(external_header)
+            found_dep = self._deps.query_by_header(external_header)
             external_includepaths.add(
-                f"{dep.make_includepath_statement(self._deps.path)}"
+                found_dep.make_includepath_statement(self._deps._path)
             )
         return external_includepaths
 
-    def _query_external_target_by_header(self, header: str) -> Dependency:
-        # todo: bake into _scan_external_targets_for_includepath_statements
-        return next(
-            filter(
-                lambda d: str(self._deps.path / d.header_relpath) == header,
-                self._deps.get_list,
-            )
-        )
-
 
 class Linker:
-    def __init__(self, config: BuildConfig, changelist: List[Target]):
+    """C++ program linker.
+
+    Converts object code files to executables or shared object files.
+    """
+
+    def __init__(self, config: BuildConfig, deps: Dependencies):
+        """Create an instance."""
         self._config = config
-        self._changelist = changelist
+        self._deps = deps
 
-    def _assemble_link_command(self, target: Target):
-        """Assemble command line arguments for linking a target.
-
-        Precondition:
-            target must be of type SourceType.{MAIN, TEST}."""
-        out_subdir = (
-            Builder.BIN_DIR
-            if target.source_type == SourceType.MAIN
-            else Builder.TEST_DIR
-        )
-
-        out_executable_path = target.make_executable_path(
-            self._config.build_directory / out_subdir
-        )
-
-        objfiles_dir_path = self._config.build_directory / Builder.OBJ_DIR
-        out_objfile_path = target.make_objfile_path(objfiles_dir_path)
-
-        # Gather internal object files.
-        object_files_to_be_linked = set()
-        for included_header in target.internal_includes:
-            object_files_to_be_linked.add(
-                str(
-                    self._query_internal_target_by_header(
-                        included_header
-                    ).make_objfile_path(objfiles_dir_path)
-                )
-            )
-
-        libs_statement = []
-        for included_header in target.external_includes:
-            library_path, libraries = self._query_external_target_by_header(
-                included_header
-            ).make_objfiles_dir_and_list(self._deps.path, self._config.debug)
-            library_path = f"-L{library_path}"
-            libraries = [
-                f'-l{lib.lstrip("lib").rstrip(".a").rstrip(".so")}' for lib in libraries
-            ]
-
-            libs_statement.append(library_path)
-            libs_statement.extend(libraries)
-
-        link_cmd = [
-            self._config.compiler,
-            "-o",
-            str(out_executable_path),
-            str(out_objfile_path),
-            *object_files_to_be_linked,
-            *libs_statement,
-            "-pthread",
-        ]
-
-        return link_cmd
-
-    def link_translation_units(self):
+    def link_translation_units(self, changelist: List[Target]):
+        """Link all the object files, sources of which were compiled in changelist."""
         # filter out source modules, only keeping tests and executables
         # with main entrypoints.
         target_list = filter(
             lambda t: t.source_type != SourceType.SRC,
-            self._changelist,
+            changelist,
         )
 
         # furthermore, filter out tests if not requested.
@@ -218,7 +175,7 @@ class Linker:
         )
 
         for target in target_list:
-            link_cmd = self._assemble_link_command(target)
+            link_cmd = self._assemble_link_command(target, changelist)
             fancy_separator()
             fancy_run(
                 link_cmd, error_message=f"Linkage of target {target.name} failed."
@@ -229,3 +186,83 @@ class Linker:
             msg_type=MessageType.SUCCESS,
             flash=True,
         )
+
+    def _assemble_link_command(self, target: Target, all_targets: List[Target]):
+        """Assemble command line arguments for linking a target.
+
+        Raises:
+            AssertionError: If `target` is not one of the types SourceType.{MAIN, TEST}.
+        """
+        assert target.source_type in [SourceType.MAIN, SourceType.TEST]
+
+        out_subdir = (
+            Builder.BIN_DIR
+            if target.source_type == SourceType.MAIN
+            else Builder.TEST_DIR
+        )
+
+        out_executable_path = target.make_executable_path(
+            self._config.build_directory / out_subdir
+        )
+
+        object_files_to_be_linked = [
+            str(
+                target.make_objfile_path(self._config.build_directory / Builder.OBJ_DIR)
+            )
+        ]
+        object_files_to_be_linked.extend(
+            [
+                str(dependee_path)
+                for dependee_path in self._assemble_dependee_list_of_target(
+                    target, all_targets
+                )
+            ]
+        )
+
+        libs_statement = self._assemble_libraries_statement(target)
+
+        link_cmd = [
+            self._config.compiler,
+            "-o",
+            str(out_executable_path),
+            *object_files_to_be_linked,
+            *libs_statement,
+            "-pthread",
+        ]
+
+        return link_cmd
+
+    def _assemble_libraries_statement(self, target: Target) -> StringList:
+        libs_statement = []
+        for external_header in target.includes.external:
+
+            found_dep = self._deps.query_by_header(external_header)
+            library_path, libraries = found_dep.make_objfiles_dir_and_list(
+                self._deps._path, self._config.debug
+            )
+            library_path = f"-L{library_path}"
+            libraries = [
+                f'-l{lib.lstrip("lib").rstrip(".a").rstrip(".so")}' for lib in libraries
+            ]
+
+            libs_statement.append(library_path)
+            libs_statement.extend(libraries)
+        return libs_statement
+
+    def _assemble_dependee_list_of_target(
+        self, target: Target, all_targets: List[Target]
+    ) -> StringList:
+        dependees = []
+        for internal_header in target.includes.internal:
+            for internal_dependency in filter(
+                lambda other_target: other_target.includes.own == internal_header,
+                all_targets,
+            ):
+                dependees.append(
+                    str(
+                        internal_dependency.make_objfile_path(
+                            self._config.build_directory / Builder.OBJ_DIR
+                        )
+                    )
+                )
+        return dependees

@@ -1,3 +1,4 @@
+"""Argument parsing types and utilities."""
 import argparse
 
 from tools.build_system.constants import CLANG_LATEST, COMPILERS, CPP_STANDARDS
@@ -6,6 +7,8 @@ STORE_TRUE = "store_true"
 
 
 class Modes:
+    """Running modes for the main program."""
+
     BUILD = "build"
     BUILD_DOCKER = "build_docker"
     DEBUG = "debug"
@@ -14,6 +17,7 @@ class Modes:
 
 
 def parse_args() -> argparse.Namespace:
+    """Parse arguments for the main program."""
     parser = argparse.ArgumentParser()
 
     subparsers = parser.add_subparsers(help="", dest="subparser")
@@ -68,8 +72,7 @@ def parse_args() -> argparse.Namespace:
     parser_code_qual.add_argument("--cpplint", action=STORE_TRUE)
     parser_code_qual.add_argument("--header-guard", action=STORE_TRUE)
     parser_code_qual.add_argument("--py-check", action=STORE_TRUE)
-    parser_code_qual.add_argument("--py-black", action=STORE_TRUE)
-    parser_code_qual.add_argument("--py-isort", action=STORE_TRUE)
+    parser_code_qual.add_argument("--py-format", action=STORE_TRUE)
     parser_code_qual.add_argument("--py-test", action=STORE_TRUE)
 
     # =========

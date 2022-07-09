@@ -1,3 +1,4 @@
+"""Cache utilities to achieve build avoidance."""
 from __future__ import annotations
 
 import pickle
@@ -10,6 +11,7 @@ from tools.build_system.target import Target
 
 @dataclass(frozen=True)
 class CacheState:
+    """An instantaneous state representation of the repository."""
 
     valid: bool
     targets: List[Target]
@@ -17,6 +19,7 @@ class CacheState:
     build_config: BuildConfig
 
     def diff(self, other: CacheState) -> List[Target]:
+        """Get the difference between two cache states."""
         changed_targets = []
 
         if (
@@ -40,23 +43,18 @@ class CacheState:
                 ), f"Faulty cache, more than 1 targets with same exact name: {current_target.name}"
 
                 old_target = match[0]
-                print(current_target)
-                print("vs")
-                print(old_target)
-                print("--")
-                print(current_target.include_checksums)
-                print(old_target.include_checksums)
-                input("================")
                 if not current_target.checksums_match(old_target):
                     changed_targets.append(current_target)
         return changed_targets
 
 
 class Cache:
+    """Build cache."""
 
     CACHE_FILE_NAME = "kioku_cache.pkl"
 
     def __init__(self, build_config: BuildConfig):
+        """Create an instance."""
         self._build_config = build_config
         self._cache_file_path = (
             self._build_config.build_directory / Cache.CACHE_FILE_NAME
@@ -65,6 +63,7 @@ class Cache:
         self._build_config.build_directory.mkdir(exist_ok=True)
 
     def _load_cache(self) -> CacheState:
+        """Deserialize a previous cache state from disk."""
         if self._cache_file_path.exists():
             with open(self._cache_file_path, "rb") as f_handle:
                 cache_state = pickle.load(f_handle)
@@ -78,10 +77,12 @@ class Cache:
         return cache_state
 
     def _save_cache(self, cache_state: CacheState):
+        """Serialize the current cache state to disk."""
         with open(self._cache_file_path, "wb") as f:
             pickle.dump(cache_state, f)
 
     def get_target_changelist(self, targets: List[Target]) -> List[Target]:
+        """Compare the current list of targets with a previous version to get the difference."""
         previous_cache_state = self._load_cache()
         current_cache_state = CacheState(True, targets, self._build_config)
         self._save_cache(current_cache_state)

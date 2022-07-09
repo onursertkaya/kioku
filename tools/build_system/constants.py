@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+"""Repo-level constants."""
 
 HEADER_EXTENSIONS = ("hpp", "h")
 SOURCE_EXTENSIONS = ("cpp", "cxx", "c")
@@ -9,8 +9,6 @@ CPP_IFNDEF_STR = "#ifndef"
 CPP_DEFINE_STR = "#define"
 CPP_ENDIF_STR = "#endif"
 CPP_INCLUDE_STR = "#include"
-CPP_MAIN_STR = "main"
-CPP_MAIN_RETURN_TYPES = ("int", "void")
 CPP_STANDARDS = (
     "11",
     "14",
@@ -25,11 +23,6 @@ CLANG_FORMAT_LATEST = f"clang-format-{CLANG_LATEST_VERSION_NO}"
 GNU_LATEST = "g++"
 COMPILERS = (CLANG_LATEST, GNU_LATEST)
 
-GTEST_TEST_STR = "TEST"
-GTEST_TEST_FIXTURE_STR = "TEST_F"
-
-FUNCTION_MATCHING_PARENTHESES_REGEXP = ".*[\\(].*[\\{{\\)]$"
-GTEST_MACRO_MATCHING_PARENTHESES_REGEXP = ".*[\\(].*[\\)]"
 
 # todo, put coloring utils into a constants class
 RESET = "\033[0m"
@@ -43,9 +36,6 @@ BOLDRED = f"{BOLD}{RED}"
 BOLDGREEN = f"{BOLD}{GREEN}"
 BOLDYELLOW = f"{BOLD}{YELLOW}"
 BOLDBLUE = f"{BOLD}{BLUE}"
-
-KIOKU_CONFIG_FILE_NAME = ".kioku"
-KIOKU_CONFIG_SCHEMA_FILE_NAME = ".kiokuschema.json"
 
 IN_DOCKER_BUILD_DIR = "/kioku_build"
 IN_DOCKER_DEPS_DIR = "/kioku_dependencies"
@@ -61,8 +51,3 @@ KIOKU_IMAGE_VERSIONS = [
     "2021-09-12",
     "2021-07-04",
 ]
-
-
-class HostConfigKeys:
-    DEPENDENCIES_DIR = "dependencies_directory"
-    BUILD_DIR = "build_directory"

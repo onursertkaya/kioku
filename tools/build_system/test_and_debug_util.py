@@ -6,7 +6,7 @@ from tools.build_system.fancy import MessageType, fancy_print
 
 
 def scan_debuggable_files(directories: List[Path]) -> List[Path]:
-    # sample `file` output:
+    # sample `file` command output:
 
     # ELF 64-bit LSB shared object,
     # x86-64,
@@ -15,30 +15,31 @@ def scan_debuggable_files(directories: List[Path]) -> List[Path]:
     # interpreter /lib64/ld-linux-x86-64.so.2,
     # BuildID[sha1]=build_id_hash,
     # for GNU/Linux 3.2.0,
-    # with debug_info, <<<
+    # with debug_info,     <<<     this is what we are interested in
     # not stripped
 
-    retval = []
+    found = []
     skipped = []
-    for d in directories:
-        executables = [str(f) for f in d.iterdir()]
+    for directory in directories:
+        executables = [str(exe_file) for exe_file in directory.iterdir()]
         debuggable_executables = []
         skipped_executables = []
-        for e in executables:
+        for exe in executables:
+            # pylint: disable=subprocess-run-check
             file_output = subprocess.run(
-                ["file", e], capture_output=True
+                ["file", exe], capture_output=True
             ).stdout.decode("utf-8")
             if "debug_info" in file_output:
-                debuggable_executables.append(e)
+                debuggable_executables.append(exe)
             else:
-                skipped_executables.append(e)
+                skipped_executables.append(exe)
 
-        retval.extend(debuggable_executables)
+        found.extend(debuggable_executables)
         skipped.extend(skipped_executables)
 
     fancy_print("Skipping the following files due to missing debug symbols:")
     fancy_print("\n\t- ".join(sorted(skipped)))
-    return sorted(retval)
+    return sorted(found)
 
 
 def choose_executable_to_debug(executables: List[Path]) -> Path:
@@ -61,15 +62,18 @@ def choose_executable_to_debug(executables: List[Path]) -> Path:
 
 
 def run_in_debugger(executable: Path):
-    subprocess.run(["gdb", executable])
+    subprocess.run(["gdb", executable])  # pylint: disable=subprocess-run-check
 
 
 def run_tests(test_executables_directory: Path, under: str = ""):
+    # pylint: disable=subprocess-run-check
     cmd = []
 
     # run under dynamic analysis tools; gdb, valgrind etc.
     if under:
-        assert subprocess.run(["which", under]).returncode == 0
+        assert (
+            subprocess.run(["which", under]).returncode == 0
+        ), f"{under} not installed."
         cmd.append(under)
 
     failed_tests = []

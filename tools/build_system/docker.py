@@ -1,3 +1,4 @@
+"""Docker utilities."""
 import datetime
 import os
 import re
@@ -12,6 +13,9 @@ from tools.build_system.constants import (
     KIOKU_IMAGE_VERSIONS,
 )
 from tools.build_system.fancy import MessageType, fancy_print, fancy_run
+from tools.build_system.typing import StringList
+
+VolumeMapping = Dict[str, str]
 
 CONSTANTS_FILE = "constants.py"
 CONSTANTS_FILE_PATH = Path(__file__).parent / CONSTANTS_FILE
@@ -31,7 +35,7 @@ def update_versions_list(version_tag: str):
 
     update_successful = False
     for line_no, line in enumerate(c_file_content):
-        if re.match("^KIOKU_IMAGE_VERSIONS = \[$", line):
+        if re.match(r"^KIOKU_IMAGE_VERSIONS = \[$", line):
             today_formatted = f'    "{version_tag}",'
             if c_file_content[line_no + 1] != today_formatted:
                 c_file_content.insert(line_no + 1, today_formatted)
@@ -40,36 +44,17 @@ def update_versions_list(version_tag: str):
 
     if update_successful:
         with open(CONSTANTS_FILE_PATH, "w") as c_file:
-            for l in c_file_content:
-                c_file.write(l + "\n")
+            for line in c_file_content:
+                c_file.write(f"{line}\n")
 
 
-def run(cmd, args, ro_volumes: Dict[str, str] = {}, rw_volumes: Dict[str, str] = {}):
+def run(cmd, args, ro_volumes: VolumeMapping = {}, rw_volumes: VolumeMapping = {}):
     """Run command in Kioku docker container."""
     assert not is_in_docker()
 
-    host_cache = f"{Path.home()}/.cache"
-    host_tmp = f"/tmp"
-    host_group_file = "/etc/group"
-    host_passwd_file = "/etc/passwd"
-
-    default_rw_volumes = {host_cache: host_cache, host_tmp: host_tmp}
-    default_ro_volumes = {
-        host_passwd_file: host_passwd_file,
-        host_group_file: host_group_file,
-    }
-
-    ro, rw = [], []
-    for k, v in {**ro_volumes, **default_ro_volumes}.items():
-        ro.append("-v")
-        ro.append(f"{k}:{v}:ro")
-
-    for k, v in {**rw_volumes, **default_rw_volumes}.items():
-        rw.append("-v")
-        rw.append(f"{k}:{v}:rw")
-
-    uid = os.geteuid()
-    gid = os.getegid()
+    volumes = _make_volume_statements(ro_volumes, rw_volumes)
+    user_id = os.geteuid()
+    grp_id = os.getegid()
 
     current_image_tag = KIOKU_IMAGE_VERSIONS[0]
 
@@ -78,12 +63,11 @@ def run(cmd, args, ro_volumes: Dict[str, str] = {}, rw_volumes: Dict[str, str] =
         "run",
         "-it",
         "--rm",
-        *ro,
-        *rw,
+        *volumes,
         "-u",
-        f"{uid}:{gid}",
+        f"{user_id}:{grp_id}",
         "-w",
-        IN_DOCKER_SRC_DIR,
+        f"{IN_DOCKER_SRC_DIR}",
         "-e",
         f"{IN_DOCKER_ENV_VAR_KEY}={IN_DOCKER_ENV_VAR_VAL}",
         f"{KIOKU_IMAGE_NAME}:{current_image_tag}",
@@ -123,3 +107,29 @@ def build():
         )
     else:
         fancy_print("Error occurred during docker build.", msg_type=MessageType.ERROR)
+
+
+def _make_volume_statements(
+    ro_volumes: VolumeMapping, rw_volumes: VolumeMapping
+) -> StringList:
+    host_cache = f"{Path.home()}/.cache"
+    host_tmp = f"/tmp"
+    host_group_file = "/etc/group"
+    host_passwd_file = "/etc/passwd"
+
+    default_rw_volumes = {host_cache: host_cache, host_tmp: host_tmp}
+    default_ro_volumes = {
+        host_passwd_file: host_passwd_file,
+        host_group_file: host_group_file,
+    }
+
+    ro, rw = [], []
+    for k, v in {**ro_volumes, **default_ro_volumes}.items():
+        ro.append("-v")
+        ro.append(f"{k}:{v}:ro")
+
+    for k, v in {**rw_volumes, **default_rw_volumes}.items():
+        rw.append("-v")
+        rw.append(f"{k}:{v}:rw")
+
+    return [*ro, *rw]

@@ -1,3 +1,4 @@
+"""Code quality utilities."""
 import re
 from pathlib import Path
 
@@ -17,18 +18,21 @@ from tools.build_system.constants import (
     CPP_ENDIF_STR,
     CPP_IFNDEF_STR,
     IN_DOCKER_DEPS_DIR,
+    IN_DOCKER_SRC_DIR,
 )
 from tools.build_system.fancy import fancy_run
 from tools.build_system.target import SourceType
 
 
 def clang_format():
+    """Run clangformat on all relevant files."""
     all_files = get_all_headers() + get_all_sources()
     cmd = [CLANG_FORMAT_LATEST, "-i"] + all_files
     fancy_run(cmd)
 
 
 def cpplint():
+    """Run cpplint on all relevant files."""
     all_files = get_all_headers() + get_all_sources()
 
     ignore_list = [
@@ -53,6 +57,7 @@ def cpplint():
 
 
 def clang_tidy():
+    """Run clangtidy on all relevant files."""
     conf = BuildConfig(
         debug=False,
         compiler=CLANG_TIDY_LATEST,
@@ -97,11 +102,12 @@ def clang_tidy():
 
 
 def header_guard():
+    """Run header guard formatter on all headers."""
     start_pattern = f"^({CPP_IFNDEF_STR}|{CPP_DEFINE_STR})"
     end_pattern = f"^{CPP_ENDIF_STR}"
 
     for header in get_all_headers():
-        lines = [l.rstrip("\n ") for l in open(header, "r")]
+        lines = [line.rstrip("\n ") for line in open(header, "r")]
 
         guard = str(Path(header).relative_to(Path(REPO_ROOT))).upper()
         for repl in ["/", ".", "-"]:
@@ -148,30 +154,46 @@ def header_guard():
 
 
 def py_check_all():
+    """Run pylint, pycodestyle and pydocstyle on all relevant files."""
     all_files = get_all_py_files()
 
-    from functools import partial
+    pyconfig_dir = f"{IN_DOCKER_SRC_DIR}/config"
 
-    non_exiting_fancy_run = partial(fancy_run, silent=False, keep_running=True)
+    non_exiting_fancy_run = _make_non_exiting_fancy_run()
 
-    non_exiting_fancy_run(["python3", "-m", "pylint", *all_files])
-    non_exiting_fancy_run(["python3", "-m", "pycodestyle", REPO_ROOT])
+    non_exiting_fancy_run(
+        ["python3", "-m", "pylint", f"--rcfile={pyconfig_dir}/pylintrc", *all_files]
+    )
+    non_exiting_fancy_run(
+        [
+            "python3",
+            "-m",
+            "pycodestyle",
+            f"--config={pyconfig_dir}/pycodestyle.cfg",
+            REPO_ROOT,
+        ]
+    )
     non_exiting_fancy_run(["python3", "-m", "pydocstyle", REPO_ROOT])
+
+    # TODO: add mypy checkjob with correct config.
+    # non_exiting_fancy_run(["python3", "-m", "mypy", REPO_ROOT])
 
 
 def py_test():
+    """Run all python tests."""
     all_files = get_all_py_files()
-
-    from functools import partial
-
-    non_exiting_fancy_run = partial(fancy_run, silent=False, keep_running=True)
+    non_exiting_fancy_run = _make_non_exiting_fancy_run()
 
     non_exiting_fancy_run(["python3", "-m", "unittest", *all_files], keep_running=True)
 
 
-def py_black():
+def py_format():
+    """Run formatting tools on all relevant files."""
     fancy_run(["python3", "-m", "black", REPO_ROOT], silent=False)
+    fancy_run(["python3", "-m", "isort", "--profile", "black", REPO_ROOT], silent=False)
 
 
-def py_isort():
-    fancy_run(["python3", "-m", "isort", REPO_ROOT], silent=False)
+def _make_non_exiting_fancy_run():
+    from functools import partial
+
+    return partial(fancy_run, silent=False, keep_running=True)

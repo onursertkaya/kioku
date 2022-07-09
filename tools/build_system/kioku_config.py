@@ -1,20 +1,25 @@
+"""Utilities to parse the kioku config file."""
 import json
 from pathlib import Path
-from typing import Union
+from typing import Optional, Union
 
 from tools.build_system.code_util import REPO_ROOT
-from tools.build_system.constants import (
-    KIOKU_CONFIG_FILE_NAME,
-    KIOKU_CONFIG_SCHEMA_FILE_NAME,
-    HostConfigKeys,
-)
+from tools.build_system.typing import PathString
 
+KIOKU_CONFIG_FILE_NAME = ".kioku"
+KIOKU_CONFIG_SCHEMA_FILE_NAME = ".kiokuschema.json"
 CONFIG_SCHEMA_PATH = Path(REPO_ROOT) / KIOKU_CONFIG_SCHEMA_FILE_NAME
 
 
-def parse_host_config(custom_config: Union[Path, str, None] = None):
-    """Parse a config from disk."""
+class HostConfigKeys:
+    """Configuration file keys."""
 
+    DEPENDENCIES_DIR = "dependencies_directory"
+    BUILD_DIR = "build_directory"
+
+
+def parse_host_config(custom_config: Optional[PathString] = None):
+    """Parse a config file from disk."""
     default_config_path = Path(REPO_ROOT) / KIOKU_CONFIG_FILE_NAME
     config_file = Path(custom_config) if custom_config else default_config_path
 

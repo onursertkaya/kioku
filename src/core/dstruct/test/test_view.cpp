@@ -232,7 +232,7 @@ TEST(DynamicView, pop_back)
     ASSERT_TRUE(match);
 }
 
-TEST(View, at_access_const_correctness)
+TEST(DynamicView, at_access_const_correctness)
 {
     auto sb = StaticBuffer<int, 3>{};
     sb[0] = 1;
