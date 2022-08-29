@@ -101,7 +101,7 @@ class Dependencies:
         """Build all the dependencies."""
         current_dir = Path.cwd()
         os.chdir(str(self._path))
-        for dep_dir in self.path.iterdir():
+        for dep_dir in self._path.iterdir():
             os.chdir(dep_dir)
             if dep_dir.name == "googletest":
                 (Path.cwd() / self.DEFAULT_BUILD_DIR).mkdir(exist_ok=True)
@@ -127,8 +127,8 @@ class Dependencies:
         """Fetch the mandatory dependencies."""
         current_dir = Path.cwd()
         os.chdir(str(self._path))
-        dir_content = [dep_dir.name for dep_dir in self.path.iterdir()]
-        for dep in self.deps:
+        dir_content = [dep_dir.name for dep_dir in self._path.iterdir()]
+        for dep in self._deps:
             if dep.name not in dir_content:
                 cmd = ["git", "clone", dep.github_url]
                 fancy_separator()
